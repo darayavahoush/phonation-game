@@ -1,0 +1,25 @@
+.ph-root{--bg:#f4f1ea;--fg:#2b2a33;--mut:#6d6a75;--acc:#5b7fa6;--card:#fff;min-height:100vh;box-sizing:border-box;padding:16px;background:var(--bg);color:var(--fg);font-family:system-ui,sans-serif}
+@media (prefers-color-scheme:dark){.ph-root{--bg:#1f2229;--fg:#e8e6ee;--mut:#a09dab;--acc:#7fa3cc;--card:#2a2e37}}
+.ph-top{display:flex;gap:16px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+.ph-center{text-align:center;max-width:560px;margin:12px auto}
+.ph-muted{color:var(--mut);font-size:.9rem}
+.ph-error{background:#f6dcdc;color:#7a1f1f;padding:10px 14px;border-radius:10px;max-width:560px;margin:8px auto}
+.ph-orbwrap{display:flex;justify-content:center;align-items:center;height:240px}
+.ph-orb{width:140px;height:140px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff8,var(--acc));margin:20px auto;opacity:.45;transition:opacity .2s}
+.ph-orbwrap .ph-orb{margin:0}
+.ph-btn{font:inherit;padding:12px 22px;border-radius:14px;border:0;background:var(--acc);color:#fff;cursor:pointer;min-height:48px}
+.ph-btn:focus-visible,select:focus-visible{outline:3px solid var(--fg);outline-offset:2px}
+.ph-ghost{background:transparent;color:var(--fg);border:1px solid var(--mut)}
+.ph-card{background:var(--card);color:var(--fg);border:1px solid #0002}
+.ph-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:12px}
+.ph-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.ph-track{height:14px;border-radius:7px;background:#0002;margin:12px 0;overflow:hidden}
+.ph-fill{height:100%;width:0;background:var(--acc);transition:width .1s linear}
+.ph-stars{font-size:2.4rem;margin:4px;color:var(--acc)}
+.ph-panel{background:var(--card);border-radius:14px;padding:16px;max-width:560px;margin:16px auto;font-size:.92rem}
+.ph-panel table{width:100%;border-collapse:collapse;margin:8px 0}
+.ph-panel th{text-align:left;font-weight:500;color:var(--mut);padding:3px 8px 3px 0}
+.ph-badge{margin-left:8px;padding:2px 8px;border-radius:999px;font-size:.8rem}
+.ph-badge.ok{background:#d9eedb;color:#1d5a2a}.ph-badge.warn{background:#f8e5c4;color:#7a4b00}
+.ph-spark{width:100%;height:40px;color:var(--acc)}
+@media (prefers-reduced-motion:reduce){.ph-orb,.ph-fill{transition:none}}
