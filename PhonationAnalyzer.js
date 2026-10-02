@@ -1,0 +1,160 @@
+import { FeatureExtractor } from './FeatureExtractor.js';
+import { normalizeLevel } from './levelSchema.js';
+import { scoreTrial } from './scoring.js';
+import { percentile, median, clamp, round } from './dsp.js';
+
+const LIVE_BRIDGE_SEC = 0.06;
+const LIVE_DB_RANGE = 30; // dB above (noise floor + 6) that maps to intensityNorm = 1
+
+/**
+ * Pure (DOM-free) core: feed it PCM blocks, get live biofeedback state and
+ * scored trial results. PhonationEngine wraps this with microphone I/O.
+ *
+ *   const a = new PhonationAnalyzer({ sampleRate, profile: 'child' });
+ *   a.startCalibration();  a.push(block)...;  a.finishCalibration();
+ *   a.beginTrial(level);   a.push(block)...;  const result = a.endTrial();
+ */
+export class PhonationAnalyzer {
+  constructor({ sampleRate, profile = 'child' } = {}) {
+    this.extractor = new FeatureExtractor({ sampleRate, profile });
+    this.hopSec = this.extractor.hopSec;
+    this.calibrated = false;
+    this.captureInfo = {};
+    this._calib = null;
+    this._trial = null;
+    this._dbEma = null;
+    this._f0Recent = [];
+    this._runStartT = null;
+    this._lastVoicedT = null;
+    this.live = this._blankLive();
+  }
+
+  _blankLive() {
+    return {
+      t: 0, voiced: false, f0Hz: null, db: null, snrDb: null, intensityNorm: 0,
+      voicedRunSec: 0, trialElapsedSec: null, clipping: false,
+    };
+  }
+
+  /** Record what the browser actually applied to the mic track (see engine). */
+  setCaptureInfo(info) {
+    this.captureInfo = { ...info };
+  }
+
+  /** Feed a mono PCM block. Returns the updated live state. */
+  push(block) {
+    const frames = this.extractor.push(block);
+    for (const f of frames) {
+      if (this._calib) this._calib.push(f);
+      if (this._trial && f.t >= this._trial.startT) this._trial.frames.push(f);
+      this._updateLive(f);
+    }
+    if (this._trial) this.live.trialElapsedSec = this.extractor.streamTimeSec - this._trial.startT;
+    return this.live;
+  }
+
+  _updateLive(f) {
+    const { noise } = this.extractor;
+    const alpha = 1 - Math.exp(-this.hopSec / 0.04);
+    this._dbEma = this._dbEma == null ? f.db : this._dbEma + alpha * (f.db - this._dbEma);
+
+    if (f.voiced && f.f0 > 0) {
+      this._f0Recent.push(f.f0);
+      if (this._f0Recent.length > 5) this._f0Recent.shift();
+      if (this._lastVoicedT == null || f.t - this._lastVoicedT > LIVE_BRIDGE_SEC) this._runStartT = f.t;
+      this._lastVoicedT = f.t;
+    } else if (this._lastVoicedT != null && f.t - this._lastVoicedT > LIVE_BRIDGE_SEC) {
+      this._runStartT = null;
+      this._f0Recent.length = 0;
+    }
+
+    const running = this._runStartT != null;
+    this.live = {
+      ...this.live,
+      t: f.t,
+      voiced: running,
+      f0Hz: running && this._f0Recent.length ? round(median(this._f0Recent), 1) : null,
+      db: round(this._dbEma, 1),
+      snrDb: round(this._dbEma - noise.db, 1),
+      intensityNorm: clamp((this._dbEma - (noise.db + 6)) / LIVE_DB_RANGE, 0, 1),
+      voicedRunSec: running ? f.t - this._runStartT + this.hopSec : 0,
+      clipping: this.extractor.clippedSamples > (this._clipMark ?? 0),
+    };
+  }
+
+  // ------------------------------------------------------------ calibration
+
+  startCalibration() {
+    this._calib = [];
+    this._clipMark = this.extractor.clippedSamples;
+  }
+
+  /**
+   * Ends calibration, applies the measured noise profile, and reports whether
+   * the room is usable. The caller should ask the child to stay quiet while
+   * calibrating; speech during calibration is flagged as unstable background.
+   */
+  finishCalibration() {
+    const frames = this._calib || [];
+    this._calib = null;
+    if (frames.length < 100) {
+      return { ok: false, noise: this.extractor.noise, warnings: ['too_short'], frames: frames.length };
+    }
+    const dbs = frames.map((f) => f.db);
+    const noise = {
+      db: percentile(dbs, 90),
+      hfDb: percentile(frames.map((f) => f.hfDb), 90),
+      lfDb: percentile(frames.map((f) => f.lfDb), 90),
+    };
+    const warnings = [];
+    if (percentile(dbs, 99) - median(dbs) > 15) warnings.push('unstable_background'); // speech / bangs while calibrating
+    if (noise.db > -45) warnings.push('high_noise');
+    this.extractor.setNoise(noise);
+    this.calibrated = true;
+    this._clipMark = this.extractor.clippedSamples;
+    return { ok: warnings.length === 0, noise, warnings, frames: frames.length };
+  }
+
+  // ----------------------------------------------------------------- trials
+
+  beginTrial(levelInput) {
+    const level = normalizeLevel(levelInput);
+    this._trial = {
+      level,
+      startT: this.extractor.streamTimeSec,
+      startedAtMs: Date.now(),
+      clipStart: this.extractor.clippedSamples,
+      frames: [],
+    };
+    this.live.trialElapsedSec = 0;
+    return level;
+  }
+
+  get trialActive() {
+    return this._trial != null;
+  }
+
+  /** Ends the trial and returns the scored, JSON-serialisable result. */
+  endTrial() {
+    if (!this._trial) throw new Error('No trial in progress');
+    const tr = this._trial;
+    this._trial = null;
+    this.live.trialElapsedSec = null;
+    return scoreTrial(tr.level, {
+      frames: tr.frames,
+      hopSec: this.hopSec,
+      noise: { ...this.extractor.noise },
+      calibrated: this.calibrated,
+      clippedSamples: this.extractor.clippedSamples - tr.clipStart,
+      captureInfo: this.captureInfo,
+      startT: tr.startT,
+      startedAtMs: tr.startedAtMs,
+    });
+  }
+
+  /** Abandon a trial without scoring. */
+  cancelTrial() {
+    this._trial = null;
+    this.live.trialElapsedSec = null;
+  }
+}
