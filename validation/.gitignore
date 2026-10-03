@@ -1,0 +1,11 @@
+# Never commit recordings, real manifests, or per-recording results. They can identify people.
+data/
+data-*/
+out/
+manifest.json
+*.wav
+*.flac
+*.mp3
+*.m4a
+!manifest.example.json
+!manifest-synthetic.json

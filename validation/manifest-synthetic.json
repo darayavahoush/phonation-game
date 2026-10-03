@@ -1,0 +1,256 @@
+[
+  {
+    "id": "sust_0",
+    "file": "data-synthetic/sust_0.wav",
+    "group": "synthetic",
+    "device": "synthetic",
+    "profile": "child",
+    "calibSec": 0.8,
+    "level": {
+      "id": "mpt",
+      "type": "sustained_voicing",
+      "targetDurationSec": 3
+    },
+    "truth": {
+      "passed": false,
+      "mptSec": 2,
+      "f0MeanHz": 220
+    }
+  },
+  {
+    "id": "sust_1",
+    "file": "data-synthetic/sust_1.wav",
+    "group": "synthetic",
+    "device": "synthetic",
+    "profile": "child",
+    "calibSec": 0.8,
+    "level": {
+      "id": "mpt",
+      "type": "sustained_voicing",
+      "targetDurationSec": 3
+    },
+    "truth": {
+      "passed": true,
+      "mptSec": 3.5,
+      "f0MeanHz": 235
+    }
+  },
+  {
+    "id": "sust_2",
+    "file": "data-synthetic/sust_2.wav",
+    "group": "synthetic",
+    "device": "synthetic",
+    "profile": "child",
+    "calibSec": 0.8,
+    "level": {
+      "id": "mpt",
+      "type": "sustained_voicing",
+      "targetDurationSec": 3
+    },
+    "truth": {
+      "passed": true,
+      "mptSec": 4.5,
+      "f0MeanHz": 250
+    }
+  },
+  {
+    "id": "sust_3",
+    "file": "data-synthetic/sust_3.wav",
+    "group": "synthetic",
+    "device": "synthetic",
+    "profile": "child",
+    "calibSec": 0.8,
+    "level": {
+      "id": "mpt",
+      "type": "sustained_voicing",
+      "targetDurationSec": 3
+    },
+    "truth": {
+      "passed": true,
+      "mptSec": 6,
+      "f0MeanHz": 265
+    }
+  },
+  {
+    "id": "sust_4",
+    "file": "data-synthetic/sust_4.wav",
+    "group": "synthetic",
+    "device": "synthetic",
+    "profile": "child",
+    "calibSec": 0.8,
+    "level": {
+      "id": "mpt",
+      "type": "sustained_voicing",
+      "targetDurationSec": 3
+    },
+    "truth": {
+      "passed": false,
+      "mptSec": 1.2,
+      "f0MeanHz": 280
+    }
+  },
+  {
+    "id": "sust_5",
+    "file": "data-synthetic/sust_5.wav",
+    "group": "synthetic",
+    "device": "synthetic",
+    "profile": "child",
+    "calibSec": 0.8,
+    "level": {
+      "id": "mpt",
+      "type": "sustained_voicing",
+      "targetDurationSec": 3
+    },
+    "truth": {
+      "passed": false,
+      "mptSec": 2.8,
+      "f0MeanHz": 295
+    }
+  },
+  {
+    "id": "train_4",
+    "file": "data-synthetic/train_4.wav",
+    "group": "synthetic",
+    "device": "synthetic",
+    "profile": "child",
+    "calibSec": 0.8,
+    "level": {
+      "id": "train",
+      "type": "syllable_train",
+      "syllable": "ba",
+      "durationSec": 5,
+      "minSyllables": 5
+    },
+    "truth": {
+      "passed": false,
+      "count": 4
+    }
+  },
+  {
+    "id": "train_5",
+    "file": "data-synthetic/train_5.wav",
+    "group": "synthetic",
+    "device": "synthetic",
+    "profile": "child",
+    "calibSec": 0.8,
+    "level": {
+      "id": "train",
+      "type": "syllable_train",
+      "syllable": "ba",
+      "durationSec": 5,
+      "minSyllables": 5
+    },
+    "truth": {
+      "passed": true,
+      "count": 5
+    }
+  },
+  {
+    "id": "train_6",
+    "file": "data-synthetic/train_6.wav",
+    "group": "synthetic",
+    "device": "synthetic",
+    "profile": "child",
+    "calibSec": 0.8,
+    "level": {
+      "id": "train",
+      "type": "syllable_train",
+      "syllable": "ba",
+      "durationSec": 5,
+      "minSyllables": 5
+    },
+    "truth": {
+      "passed": true,
+      "count": 6
+    }
+  },
+  {
+    "id": "train_8",
+    "file": "data-synthetic/train_8.wav",
+    "group": "synthetic",
+    "device": "synthetic",
+    "profile": "child",
+    "calibSec": 0.8,
+    "level": {
+      "id": "train",
+      "type": "syllable_train",
+      "syllable": "ba",
+      "durationSec": 5,
+      "minSyllables": 5
+    },
+    "truth": {
+      "passed": true,
+      "count": 8
+    }
+  },
+  {
+    "id": "train_3",
+    "file": "data-synthetic/train_3.wav",
+    "group": "synthetic",
+    "device": "synthetic",
+    "profile": "child",
+    "calibSec": 0.8,
+    "level": {
+      "id": "train",
+      "type": "syllable_train",
+      "syllable": "ba",
+      "durationSec": 5,
+      "minSyllables": 5
+    },
+    "truth": {
+      "passed": false,
+      "count": 3
+    }
+  },
+  {
+    "id": "glide_3",
+    "file": "data-synthetic/glide_3.wav",
+    "group": "synthetic",
+    "device": "synthetic",
+    "profile": "child",
+    "calibSec": 0.8,
+    "level": {
+      "id": "glide",
+      "type": "pitch_glide",
+      "direction": "up",
+      "minRangeSemitones": 4
+    },
+    "truth": {
+      "passed": false
+    }
+  },
+  {
+    "id": "glide_6",
+    "file": "data-synthetic/glide_6.wav",
+    "group": "synthetic",
+    "device": "synthetic",
+    "profile": "child",
+    "calibSec": 0.8,
+    "level": {
+      "id": "glide",
+      "type": "pitch_glide",
+      "direction": "up",
+      "minRangeSemitones": 4
+    },
+    "truth": {
+      "passed": true
+    }
+  },
+  {
+    "id": "glide_9",
+    "file": "data-synthetic/glide_9.wav",
+    "group": "synthetic",
+    "device": "synthetic",
+    "profile": "child",
+    "calibSec": 0.8,
+    "level": {
+      "id": "glide",
+      "type": "pitch_glide",
+      "direction": "up",
+      "minRangeSemitones": 4
+    },
+    "truth": {
+      "passed": true
+    }
+  }
+]

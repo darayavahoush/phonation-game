@@ -1,0 +1,23 @@
+[
+  {
+    "id": "svd_0123_a_n",
+    "file": "data/svd_0123_a_n.wav",
+    "group": "pathological",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "calibSec": 0,
+    "noiseFile": "data/room-tone.wav",
+    "level": { "id": "mpt", "type": "sustained_voicing", "targetDurationSec": 2 },
+    "truth": { "passed": true, "mptSec": 2.4 }
+  },
+  {
+    "id": "child07_baba",
+    "file": "data/child07_baba.wav",
+    "group": "child-clinic",
+    "device": "tablet-builtin",
+    "profile": "child",
+    "calibSec": 0.8,
+    "level": { "id": "ddk", "type": "syllable_train", "syllable": "ba", "durationSec": 5, "minSyllables": 5 },
+    "truth": { "passed": true, "count": 7 }
+  }
+]
