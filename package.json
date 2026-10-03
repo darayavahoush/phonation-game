@@ -1,6 +1,12 @@
 {
+  "name": "phonation-game",
+  "version": "0.2.0",
+  "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test __tests__/phonation.test.js __tests__/recognition.test.js"
+    "test": "node --test \"__tests__/*.test.js\"",
+    "setup": "npm --prefix standalone install",
+    "dev": "npm --prefix standalone run dev",
+    "build": "npm --prefix standalone run build"
   }
 }
