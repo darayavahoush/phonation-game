@@ -5,6 +5,7 @@ import { adapt, TYPE_LABEL, levelList, levelTitle, levelPrompt, levelSay, levelG
 import VoiceStage from './VoiceStage.jsx'
 import Clinician from './Clinician.jsx'
 import Face from './Face.jsx'
+import { AVATARS, WORLDS, SOUNDS, MODES, QUESTS, CAST, SURPRISES, makeLevel, cleanSound, chapterLevel } from './worlds.js'
 import './studio.css'
 
 const ICON = { sustained_voicing: '🕯️', cv_syllable: '✨', syllable_train: '🥁', pitch_glide: '🎢', loudness_ramp: '📣' }
@@ -56,6 +57,19 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
   const [seenHow, setSeenHow] = useState(false)
   const [nextIdx, setNextIdx] = useState(() => Math.max(0, levelList(levels).findIndex((l) => l.type === 'cv_syllable'))) // start on a real syllable // Lumi's suggestion: moves on after each reliable pass; nothing is stored
   const [showAll, setShowAll] = useState(false)
+  const [avatarId, setAvatarId] = useState('lumi')
+  const [tab, setTab] = useState('quests') // quests | sounds | friends
+  const [run, setRun] = useState(null) // { quest, i, twisted } while on a story; session only, nothing is stored
+  const [sound, setSound] = useState('ba')
+  const [mode, setMode] = useState('pop')
+  const [outfit, setOutfit] = useState(null)
+  const [prizes, setPrizes] = useState([])
+  const [toast, setToast] = useState(null)
+  const [plays, setPlays] = useState(0)
+  const [arc, setArc] = useState(0) // how far the saga has got this session (nothing is stored)
+  const avatar = AVATARS.find((a) => a.id === avatarId) || AVATARS[0]
+  const worldId = run ? run.quest.world : Object.keys(WORLDS)[plays % Object.keys(WORLDS).length]
+  const world = WORLDS[worldId]
   const [set, setSet] = useState({ gain: 'normal', clinician: false, recog: false, denoise: false })
   const reduced = useMemo(() => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches, [])
 
@@ -92,7 +106,22 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
     setCalWarn(cal?.warnings || []); setStage('menu')
   }
 
-  const choose = (l, name) => { setLevel(l); setLabel(name ?? levelTitle(l)); setResult(null); setNotice(null); setCount(null); setStage('ready') }
+  const choose = (l, name) => { setRun(null); setLevel(l); setLabel(name ?? levelTitle(l)); setResult(null); setNotice(null); setCount(null); setStage('ready') }
+
+  const startChapter = (quest, i, twisted = false) => {
+    const ch = quest.chapters[i], l = chapterLevel(ch, twisted, quest, i)
+    if (!l) return
+    setRun({ quest, i, twisted }); setLevel(l); setLabel(`Chapter ${QUESTS.indexOf(quest) * 5 + i + 1} of ${QUESTS.length * 5}`); setResult(null); setNotice(null); setCount(null); setStage('ready')
+  }
+  const startFree = () => { const l = makeLevel(sound, mode); if (l) choose(l, `“${cleanSound(sound)}”`) }
+  const afterPass = () => { // surprise gift on about every other pass
+    if (Math.random() < 0.55) { const g = SURPRISES[Math.floor(Math.random() * SURPRISES.length)]; setOutfit(g.gift); setToast(g); setTimeout(() => setToast(null), 3800) }
+  }
+  const nextChapter = () => {
+    const { quest, i } = run
+    if (i + 1 >= quest.chapters.length) { setPrizes((p) => (p.includes(quest.prize.icon) ? p : [...p, quest.prize.icon])); setArc((a) => Math.max(a, QUESTS.indexOf(quest) + 1)); setStage('finale'); return }
+    const nx = quest.chapters[i + 1]; startChapter(quest, i + 1, !!nx.twist)
+  }
 
   useEffect(() => {
     if (count === null) return
@@ -124,7 +153,8 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
           r = await A.current.end()
         }
       } else r = await A.current.end()
-      if (r.passed && r.quality?.reliable !== false) setNextIdx((i) => (i + 1) % Math.max(list.length, 1))
+      if (r.passed && r.quality?.reliable !== false) { setNextIdx((i) => (i + 1) % Math.max(list.length, 1)); afterPass() }
+      setPlays((n) => n + 1)
       setResult(r); setStage('result'); onResultRef.current?.(r, level)
     } catch (e) {
       setNotice({ kind: 'warn', text: `That try could not be scored: ${e?.message ?? e}` }); setStage('menu')
@@ -157,9 +187,11 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
   const recognition = result?.recognition ?? result?.recognizer ?? null
 
   return (
-    <div className="st-root" data-stage={stage}>
+    <div className="st-root" data-stage={stage} data-world={worldId} style={{ background: `linear-gradient(180deg, ${world.sky[0]} 0%, ${world.sky[1]} 50%, ${world.sky[2]} 100%)`, '--av0': `rgb(${avatar.glow})`, '--av1': `rgb(${avatar.body})` }}>
+      <div className="st-deco" aria-hidden="true">{world.deco.map((d, i) => <span key={d + i} style={{ left: `${8 + i * 24}%`, animationDelay: `${i * -3.2}s` }}>{d}</span>)}</div>
+      {toast && <div className="st-toast" role="status"><i>{toast.icon}</i>{toast.text}</div>}
       <header className="st-top">
-        <h1>Voice Lantern</h1>
+        <h1>Voice Quest</h1>
         {stage !== 'welcome' && (
           <details className="st-settings">
             <summary>Settings</summary>
@@ -179,24 +211,24 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
 
       {stage === 'welcome' && (
         <main className="st-welcome">
-          <div className="st-idle" aria-hidden="true"><Face /></div>
-          <h2>Hi! I’m Lumi.</h2>
-          <p>Let’s turn your voice into light! Find a quiet spot first.</p>
+          <div className="st-idle" aria-hidden="true"><Face /><span className="st-hat">{avatar.badge}</span></div>
+          <h2>Hi! I’m {avatar.name}.</h2>
+          <p>Your voice is magic here. Let’s go on quests and meet dragons, unicorns and more! Find a quiet spot first.</p>
           <p className="st-fine">Your voice is never recorded or sent anywhere. Only loudness and pitch measurements are used.</p>
-          <button className="st-btn" onClick={begin} disabled={busy}>{busy ? 'Starting…' : 'Light the lantern'}</button>
+          <button className="st-btn" onClick={begin} disabled={busy}>{busy ? 'Starting…' : 'Begin the adventure'}</button>
         </main>
       )}
 
       {stage === 'calibrating' && (
-        <main className="st-welcome"><div className="st-idle" aria-hidden="true"><Face /></div><h2>Shh. Lumi is listening to the room.</h2><p>Stay quiet for a moment.</p></main>
+        <main className="st-welcome"><div className="st-idle" aria-hidden="true"><Face /><span className="st-hat">{avatar.badge}</span></div><h2>Shh. {avatar.name} is listening to the room.</h2><p>Stay quiet for a moment.</p></main>
       )}
 
       {stage === 'howto' && (
         <main className="st-howto">
-          <div className="st-orb" aria-hidden="true"><Face /></div>
+          <div className="st-orb" aria-hidden="true"><Face /><span className="st-hat">{outfit || avatar.badge}</span></div>
           <h2>How to play</h2>
           <ol className="st-big3">
-            {[['🌬️', 'Take a big breath'], ['🗣️', 'Make a sound, like “aaah”'], ['🌟', 'Watch Lumi glow! Louder and longer makes Lumi brighter.']].map(([e, t], i) => <li key={i}><i>{e}</i><b>{i + 1}</b><span>{t}</span></li>)}
+            {[['🌬️', 'Take a big breath'], ['🗣️', 'Make a sound, like “aaah”'], ['🌟', 'Watch the magic! Louder and longer makes it brighter.']].map(([e, t], i) => <li key={i}><i>{e}</i><b>{i + 1}</b><span>{t}</span></li>)}
           </ol>
           <p className="st-fine">You can’t get it wrong. Every try makes Lumi happy.</p>
           <div className="st-actions"><button className="st-btn big" onClick={() => { setSeenHow(true); setStage('menu') }}>Let’s play!</button><button className="st-btn ghost" onClick={() => say('Take a big breath. Make a sound, like aaah. Watch Lumi glow! Louder and longer makes Lumi brighter.')}>🔊 Hear it</button></div>
@@ -205,15 +237,17 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
 
       {stage === 'ready' && level && (
         <main className="st-ready">
-          <div className="st-orb" aria-hidden="true"><Face /></div>
+          <div className="st-orb" aria-hidden="true"><Face /><span className="st-hat">{outfit || avatar.badge}</span></div>
           <div className="st-readycard">
             <div className="st-bigico" aria-hidden="true">{ICON[level.type] ?? '🔆'}</div>
             {levelSay(level) && <div className="st-say" aria-hidden="true">{levelSay(level)}</div>}
             <h2>{label || levelTitle(level)}</h2>
+            {run?.twisted && run.quest.chapters[run.i].twist && <p className="st-twist">🌀 {run.quest.chapters[run.i].twist}</p>}
+            {run && (() => { const c = run.quest.chapters[run.i], w = CAST[c.who] || CAST.narr; return <div className="st-speak"><i aria-hidden="true">{w.icon}</i><div><b>{w.name}</b><p>{c.text}</p></div></div> })()}
             <p className="st-lead">{levelPrompt(level)}</p>
             <ol className="st-steps">{(HOWTO[level.type] || HOWTO.default).map((s, i) => <li key={i}><b>{i + 1}</b>{s}</li>)}</ol>
             {count === null
-              ? <div className="st-actions"><button className="st-btn big" onClick={() => setCount(3)}>I’m ready!</button><button className="st-btn ghost" onClick={() => say(`${levelPrompt(level)} ${(HOWTO[level.type] || HOWTO.default).join(' ')}`)}>🔊 Hear it</button><button className="st-link" onClick={() => setStage('menu')}>Back</button></div>
+              ? <div className="st-actions"><button className="st-btn big" onClick={() => setCount(3)}>I’m ready!</button><button className="st-btn ghost" onClick={() => say(`${levelPrompt(level)} ${(HOWTO[level.type] || HOWTO.default).join(' ')}`)}>🔊 Hear it</button><button className="st-link" onClick={() => { setRun(null); setStage('menu') }}>Back</button></div>
               : <div className="st-count" role="status" aria-live="assertive" key={count}>{count === 0 ? 'Go!' : count}</div>}
           </div>
         </main>
@@ -221,25 +255,54 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
 
       {stage === 'menu' && (
         <main className="st-menu">
-          <h2 className="st-menuhead">Ready for the next one?</h2>
+          <h2 className="st-menuhead">Where to, {avatar.name}’s friend?</h2>
           {processing && <p className="st-notice warn" role="alert">This device is changing the sound (noise, echo or volume processing). Results will be marked unreliable. Try another microphone or browser.</p>}
           {calWarn.includes('unstable_background') && <p className="st-notice warn">We heard sound while measuring the room, so quiet voices may be missed. <button className="st-link" onClick={recalibrate}>Measure the room again</button></p>}
-          {!showAll && list[nextIdx] && (() => { const l = list[nextIdx]; const name = levelTitle(l, 0, 1); return (
-            <section className="st-next"><button className="st-level" onClick={() => choose(l, name)}><i className="st-ico" aria-hidden="true">{ICON[l.type] ?? '🔆'}</i><strong>{name}</strong><span>{levelPrompt(l)}</span></button></section>
-          ) })()}
-          {showAll && Object.entries(groups).map(([type, ls]) => (
-            <section key={type}>
-              <h2>{TYPE_LABEL[type] ?? type}</h2>
-              <div className="st-levels">{ls.map((l, i) => { const name = levelTitle(l, i, ls.length); return <button key={l.id ?? name + i} className="st-level" onClick={() => choose(l, name)}><i className="st-ico" aria-hidden="true">{ICON[l.type] ?? '🔆'}</i><strong>{name}</strong><span>{levelPrompt(l)}</span>{levelChips(l).length > 0 && <em className="st-chips">{levelChips(l).map((c) => <b key={c}>{c}</b>)}</em>}</button> })}</div>
-            </section>
-          ))}
-          <div className="st-menufoot"><button className="st-link" onClick={() => setShowAll((v) => !v)}>{showAll ? 'Back to Lumi’s pick' : 'Choose a different game'}</button><button className="st-link" onClick={() => setStage('howto')}>How to play</button><button className="st-link" onClick={recalibrate}>Measure the room again</button></div>
+          <nav className="st-tabs" aria-label="Choose what to do">
+            {[['quests', '🗺️ Story quests'], ['sounds', '🎵 Sounds'], ['friends', `${avatar.badge} Friends`]].map(([id, t]) => <button key={id} className={tab === id ? 'on' : ''} aria-pressed={tab === id} onClick={() => setTab(id)}>{t}</button>)}
+            {prizes.length > 0 && <span className="st-prizes" aria-label="Prizes won">{prizes.join(' ')}</span>}
+          </nav>
+
+          {tab === 'quests' && arc < QUESTS.length && <div className="st-continue"><button className="st-btn big" onClick={() => startChapter(QUESTS[arc], 0)}>{arc ? 'Continue the saga' : 'Begin the saga'} · realm {arc + 1} of {QUESTS.length}</button></div>}
+          {tab === 'quests' && <div className="st-quests">{QUESTS.map((q) => (
+            <button key={q.id} className="st-quest" data-world={q.world} onClick={() => startChapter(q, 0, false)} style={{ background: `linear-gradient(145deg, ${WORLDS[q.world].sky[1]}, ${WORLDS[q.world].sky[2]})` }}>
+              <i aria-hidden="true">{q.icon}</i><strong>{q.title}</strong><span>{q.blurb}</span>
+              <em>{WORLDS[q.world].emoji} {WORLDS[q.world].name} · {q.chapters.length} chapters {prizes.includes(q.prize.icon) ? `· ${q.prize.icon} won!` : ''}</em>
+            </button>))}</div>}
+
+          {tab === 'sounds' && <section className="st-sounds">
+            <h2>Pick a sound, or type your own</h2>
+            <div className="st-chipgrid" role="group" aria-label="Sounds">{SOUNDS.map((x) => <button key={x} className={sound === x ? 'on' : ''} aria-pressed={sound === x} onClick={() => setSound(x)}>{x}</button>)}</div>
+            <label className="st-own">Or type your own <input value={sound} maxLength={6} onChange={(e) => setSound(cleanSound(e.target.value))} placeholder="e.g. bo" aria-label="Type your own sound" /></label>
+            <div className="st-modes" role="group" aria-label="How to say it">{MODES.map((m) => <button key={m.id} className={mode === m.id ? 'on' : ''} aria-pressed={mode === m.id} onClick={() => setMode(m.id)}><i>{m.icon}</i><b>{m.label}</b><small>{m.hint}</small></button>)}</div>
+            <div className="st-actions"><button className="st-btn big" disabled={!cleanSound(sound)} onClick={startFree}>Play “{cleanSound(sound) || '…'}”</button></div>
+            <button className="st-link" onClick={() => setShowAll((v) => !v)}>{showAll ? 'Hide more games' : 'More games: slides and loud/quiet'}</button>
+            {showAll && Object.entries(groups).filter(([t]) => t === 'pitch_glide' || t === 'loudness_ramp').map(([type, ls]) => (
+              <div key={type} className="st-levels">{ls.map((l, i) => { const name = levelTitle(l, i, ls.length); return <button key={l.id ?? name + i} className="st-level" onClick={() => choose(l, name)}><i className="st-ico" aria-hidden="true">{ICON[l.type] ?? '🔆'}</i><strong>{name}</strong><span>{levelPrompt(l)}</span></button> })}</div>))}
+          </section>}
+
+          {tab === 'friends' && <div className="st-friends">{AVATARS.map((a) => (
+            <button key={a.id} className={avatarId === a.id ? 'on' : ''} aria-pressed={avatarId === a.id} onClick={() => { setAvatarId(a.id); setOutfit(null) }}>
+              <i style={{ background: `radial-gradient(circle at 35% 30%, rgb(${a.glow}), rgb(${a.body}))` }}>{a.badge}</i><strong>{a.name}</strong><span>{a.kind}</span><small>{a.blurb}</small>
+            </button>))}</div>}
+
+          <div className="st-menufoot"><button className="st-link" onClick={() => setStage('howto')}>How to play</button><button className="st-link" onClick={recalibrate}>Measure the room again</button></div>
+        </main>
+      )}
+
+      {stage === 'finale' && run && (
+        <main className="st-howto">
+          <div className="st-confetti" aria-hidden="true">{Array.from({ length: 24 }, (_, i) => <i key={i} style={{ left: `${(i * 4.3 + 2) % 100}%`, animationDelay: `${(i % 8) * 0.2}s`, background: ['#FF9B54', '#FFD08A', '#2FB8A6', '#60A5FA', '#F0604A'][i % 5] }} />)}</div>
+          <div className="st-orb" aria-hidden="true"><Face /><span className="st-hat">{run.quest.prize.icon}</span></div>
+          <h2>Quest complete!</h2>
+          <p className="st-lead">{run.quest.title}: you did it! You won the {run.quest.prize.name} {run.quest.prize.icon}</p>
+          <div className="st-actions">{QUESTS[QUESTS.indexOf(run.quest) + 1] ? <button className="st-btn big" onClick={() => startChapter(QUESTS[QUESTS.indexOf(run.quest) + 1], 0)}>Next realm →</button> : <p className="st-lead">🎉 The whole saga is complete. You saved the kingdom!</p>}<button className="st-btn ghost" onClick={() => { setRun(null); setStage('menu') }}>Back to the map</button></div>
         </main>
       )}
 
       {(stage === 'play' || stage === 'result') && level && (
         <main className="st-play">
-          <VoiceStage read={A.current.read} active={stage === 'play'} goalMs={goal} glide={level.type === 'pitch_glide'} gain={GAIN[set.gain]} reduced={reduced} onOnset={() => setTally((n) => n + 1)} />
+          <VoiceStage read={A.current.read} active={stage === 'play'} goalMs={goal} glide={level.type === 'pitch_glide'} gain={GAIN[set.gain]} reduced={reduced} onOnset={() => setTally((n) => n + 1)} avatar={avatar} world={world} outfit={outfit} />
           <div className="st-copy" aria-live="polite">
             {stage === 'play' && <>
               {levelSay(level) && <div className="st-say" aria-hidden="true">{levelSay(level)}</div>}
@@ -254,7 +317,9 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
               {result.quality?.reliable !== false && <div className="st-stars" aria-label={`${result.stars ?? 0} of 3 stars`}>{[0, 1, 2].map((i) => <b key={i} className={i < (result.stars ?? 0) ? 'on' : ''}>★</b>)}</div>}
               <h2>{result.quality?.reliable === false ? 'Hmm, I couldn’t hear that one clearly.' : result.passed ? 'Lovely. You did it.' : 'Good try. Let’s go again.'}</h2>
               {result.quality?.reliable === false && <><p>{adviceFor(result.quality).text}</p><p className="st-why">Why: {adviceFor(result.quality).why}{result.quality.noiseFloorDb != null && ` (room floor ${result.quality.noiseFloorDb} dB, your voice ${result.quality.snrDb ?? '–'} dB above it)`}</p></>}
-              <div className="st-actions"><button className="st-btn" onClick={() => play(level)}>Again</button><button className="st-btn ghost" onClick={() => { setShowAll(false); setStage('menu') }}>Next game</button></div>
+              <div className="st-actions">{run && result.passed && result.quality?.reliable !== false
+                ? <><button className="st-btn big" onClick={nextChapter}>{run.i + 1 >= run.quest.chapters.length ? 'Finish the quest!' : 'Next chapter'}</button><button className="st-btn ghost" onClick={() => play(level)}>Again</button></>
+                : <><button className="st-btn" onClick={() => play(level)}>Again</button><button className="st-btn ghost" onClick={() => { setRun(null); setShowAll(false); setStage('menu') }}>Back to the map</button></>}</div>
             </>}
           </div>
           {stage === 'result' && result && set.clinician && <Clinician result={result} level={level} recognition={recognition} onExport={exportJson} />}

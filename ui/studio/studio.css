@@ -152,3 +152,36 @@
 .st-why { font-size: .9rem; color: var(--mute) !important; opacity: .85; }
 
 .st-say { font: 800 clamp(3.5rem, 14vw, 7rem)/1 var(--display); color: var(--lamp); letter-spacing: .04em; text-shadow: 0 0 24px rgba(255,155,84,.55); margin: .25rem 0; }
+
+/* ---- v4: fantasy worlds, friends, saga ---- */
+.st-root { transition: background 1s ease; }
+.st-deco { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 0 !important; }
+.st-deco span { position: absolute; bottom: -2rem; font-size: 2.2rem; opacity: .35; animation: st-float 18s linear infinite; }
+@keyframes st-float { to { transform: translateY(-110vh) rotate(20deg); } }
+.st-hat { position: absolute; left: 50%; top: -22%; translate: -50% 0; font-size: 2.6rem; filter: drop-shadow(0 4px 8px rgba(0,0,0,.35)); }
+.st-orb { background: radial-gradient(circle at 35% 30%, var(--av0, #FFF1D6), var(--av1, #FF9B54) 100%) !important; }
+.st-idle { background: radial-gradient(circle at 35% 30%, var(--av0, #FFF1D6), var(--av1, #FF9B54) 100%) !important; }
+.st-tabs { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
+.st-tabs button, .st-chipgrid button, .st-modes button { font: 700 1.1rem var(--display); color: inherit; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.08); border-radius: 999px; padding: .6rem 1.2rem; cursor: pointer; transition: transform .2s; }
+.st-tabs button.on, .st-chipgrid button.on, .st-modes button.on { background: var(--ember); color: var(--ink); border-color: transparent; transform: scale(1.04); }
+.st-prizes { margin-left: auto; font-size: 1.6rem; letter-spacing: .15rem; }
+.st-continue { grid-column: 1 / -1; }
+.st-quests { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; }
+.st-quest { text-align: left; display: grid; gap: .4rem; padding: 1.2rem; border-radius: 24px; border: 1px solid rgba(255,255,255,.2); color: #fff; cursor: pointer; box-shadow: 0 10px 30px rgba(0,0,0,.3); transition: transform .25s; font: inherit; }
+.st-quest:hover { transform: translateY(-4px) rotate(-.6deg); }
+.st-quest i { font-style: normal; font-size: 2.6rem; } .st-quest strong { font: 800 1.35rem var(--display); } .st-quest span { opacity: .9; } .st-quest em { font-style: normal; font-size: .9rem; opacity: .8; }
+.st-sounds { grid-column: 1 / -1; display: grid; gap: 1rem; }
+.st-chipgrid { display: flex; flex-wrap: wrap; gap: .5rem; } .st-chipgrid button { font-size: 1.5rem; min-width: 4rem; }
+.st-own { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; font-weight: 700; }
+.st-own input { font: 800 1.6rem var(--display); width: 9rem; padding: .4rem .9rem; border-radius: 16px; border: 2px solid var(--lamp); background: rgba(0,0,0,.25); color: #fff; }
+.st-modes { display: flex; flex-wrap: wrap; gap: .6rem; } .st-modes button { border-radius: 20px; display: grid; justify-items: center; gap: .1rem; min-width: 9rem; } .st-modes i { font-style: normal; font-size: 1.6rem; } .st-modes small { opacity: .8; font-weight: 600; }
+.st-friends { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 1rem; }
+.st-friends button { display: grid; justify-items: center; gap: .3rem; padding: 1.2rem; border-radius: 24px; border: 2px solid rgba(255,255,255,.15); background: rgba(255,255,255,.07); color: inherit; cursor: pointer; font: inherit; text-align: center; }
+.st-friends button.on { border-color: var(--lamp); box-shadow: 0 0 30px rgba(255,208,138,.4); }
+.st-friends i { font-style: normal; font-size: 2.6rem; width: 5rem; height: 5rem; border-radius: 50%; display: grid; place-items: center; } .st-friends strong { font: 800 1.3rem var(--display); } .st-friends small { color: var(--mute); }
+.st-speak { display: flex; gap: .9rem; align-items: flex-start; padding: .9rem 1rem; border-radius: 20px; background: rgba(255,255,255,.1); }
+.st-speak i { font-style: normal; font-size: 2.6rem; } .st-speak b { color: var(--lamp); font: 800 1rem var(--display); } .st-speak p { margin: .15rem 0 0; font-size: 1.15rem; font-weight: 600; }
+.st-twist { margin: 0; padding: .7rem 1rem; border-radius: 16px; background: rgba(240,96,74,.25); font-weight: 800; animation: card-pop .5s both; }
+.st-toast { position: fixed; top: 4.5rem; left: 50%; translate: -50% 0; z-index: 30; display: flex; align-items: center; gap: .7rem; padding: .8rem 1.4rem; border-radius: 999px; background: #fff; color: var(--ink); font: 800 1.1rem var(--display); box-shadow: 0 10px 40px rgba(0,0,0,.5); animation: card-pop .5s both; }
+.st-toast i { font-style: normal; font-size: 1.8rem; }
+@media (prefers-reduced-motion: reduce) { .st-deco span { animation: none; bottom: 8%; } }

@@ -7,16 +7,16 @@ const PAL = { glass: [143, 224, 212], lamp: [255, 155, 84] } // mint-light -> em
 const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t))
 const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`
 
-export default function VoiceStage({ read, active, goalMs, glide, gain = 1, reduced, onOnset }) {
+export default function VoiceStage({ read, active, goalMs, glide, gain = 1, reduced, onOnset, avatar, world, outfit }) {
   const ref = useRef(null)
   const cfg = useRef({})
-  cfg.current = { read, active, goalMs, glide, gain, reduced, onOnset }
+  cfg.current = { read, active, goalMs, glide, gain, reduced, onOnset, avatar, world, outfit }
 
   useEffect(() => {
     const cv = ref.current
     const ctx = cv.getContext('2d')
     let raf, last = performance.now(), W = 0, H = 0
-    const S = { t: 0, r: 0, warm: 0, run: 0, was: false, trail: [], ripples: [], acc: 0, lv: 0, ph: 0, amp: 0, cyc: 3, sparks: [], sec: 0 }
+    const S = { hist: new Array(90).fill(0), hacc: 0, gap: 1e9, pend: false, t: 0, r: 0, warm: 0, run: 0, was: false, trail: [], ripples: [], acc: 0, lv: 0, ph: 0, amp: 0, cyc: 3, sparks: [], sec: 0 }
     const fit = () => {
       const d = Math.min(2, window.devicePixelRatio || 1), b = cv.getBoundingClientRect()
       W = b.width; H = b.height; cv.width = W * d; cv.height = H * d; ctx.setTransform(d, 0, 0, d, 0, 0)
@@ -26,7 +26,7 @@ export default function VoiceStage({ read, active, goalMs, glide, gain = 1, redu
     const frame = (now) => {
       const dt = Math.max(0, Math.min(0.1, (now - last) / 1000)); last = now
       if (W < 2 || H < 2) { raf = requestAnimationFrame(frame); return } // canvas not laid out yet
-      const { read, active, goalMs, glide, gain, reduced, onOnset } = cfg.current
+      const { read, active, goalMs, glide, gain, reduced, onOnset, avatar, world, outfit } = cfg.current
       const v = active ? read() : { voiced: false, level: 0, pitch: null }
       const k = reduced ? 1 : 1 - Math.exp(-dt / 0.09) // ~90 ms response: feels instant, not jittery
       const base = Math.min(W, H) * 0.2
@@ -34,7 +34,8 @@ export default function VoiceStage({ read, active, goalMs, glide, gain = 1, redu
       S.r += (target - S.r) * k
       S.warm += ((v.voiced ? 1 : 0) - S.warm) * (reduced ? 1 : 1 - Math.exp(-dt / 0.25))
       if (v.voiced) S.run += dt * 1000; else S.run = 0
-      if (v.voiced && !S.was) { onOnset?.(); if (!reduced && S.ripples.length < 5) S.ripples.push({ age: 0 }) }
+      if (v.voiced) { if (!S.was) { S.pend = S.gap > 450; S.gap = 0 } else if (S.pend && S.run > 80) { S.pend = false; onOnset?.(); if (!reduced && S.ripples.length < 5) S.ripples.push({ age: 0 }) } }
+      else S.gap += dt * 1000 // only a real pause (>0.45 s) starts a new count, so one "ba" with a tiny dropout counts once
       S.was = v.voiced
 
       S.lv += ((v.voiced ? v.level : 0) - S.lv) * 0.3 // smoothed so the trail tapers instead of ending in a cliff
@@ -42,7 +43,7 @@ export default function VoiceStage({ read, active, goalMs, glide, gain = 1, redu
       while (S.acc > 1 / 30) { S.acc -= 1 / 30; S.trail.push({ p: v.voiced ? v.pitch : null, l: S.lv }); if (S.trail.length > 240) S.trail.shift() }
 
       ctx.clearRect(0, 0, W, H)
-      const cx = W * 0.62, cy = H * 0.5, col = mix(PAL.glass, PAL.lamp, S.warm)
+      const cx = W * 0.62, cy = H * 0.5, AV = avatar || { body: PAL.lamp, glow: PAL.lamp }, WD = world || { wave: PAL.glass, spark: [255, 226, 150] }, col = mix(WD.wave, AV.body, S.warm)
 
       // trail: pitch ribbon for glide levels, soft loudness swell for everything else
       if (glide && S.trail.length > 2) {
@@ -56,21 +57,28 @@ export default function VoiceStage({ read, active, goalMs, glide, gain = 1, redu
         }
       }
 
-      // sound wave: sine ribbons across the whole stage. Height follows the voice level, the number of
-      // humps follows the pitch (higher voice = tighter wave). A drawing driven by level + pitch, not the raw samples.
+      // sound wave: the height at each point is how loud you were at that moment (newest on the right, scrolling left),
+      // so it rises and falls with your voice. Tighter humps = higher pitch. Drawn from level + pitch, not raw samples.
       if (!glide) {
         S.ph += reduced ? 0 : dt * (v.voiced ? 9 : 2.2)
-        S.amp += ((v.voiced ? 0.3 + Math.min(1, v.level) * 0.7 * gain : 0.04) - S.amp) * k
+        S.hacc += dt; while (S.hacc > 1 / 60) { S.hacc -= 1 / 60; S.hist.push(v.voiced ? Math.min(1, v.level * gain) : 0); S.hist.shift() }
         const pn = v.voiced && v.pitch ? Math.max(0, Math.min(1, (Math.log2(v.pitch) - Math.log2(100)) / (Math.log2(500) - Math.log2(100)))) : null
         S.cyc += ((pn == null ? S.cyc : 2 + pn * 4) - S.cyc) * 0.06
+        const N = S.hist.length
         for (let L = 0; L < 3; L++) {
           ctx.beginPath(); ctx.lineCap = 'round'; ctx.lineJoin = 'round'
           for (let x = 0; x <= W; x += 4) {
-            const t = x / W, env = Math.pow(Math.sin(Math.PI * t), 0.7)
-            const y = H * 0.5 + Math.sin(t * S.cyc * 6.283 * (1 + L * 0.3) - S.ph * (1 + L * 0.35) + L * 1.3) * env * S.amp * H * 0.4 * (1 - L * 0.27)
+            const t = x / W, h = S.hist[Math.min(N - 1, Math.floor(t * N))], env = Math.pow(Math.sin(Math.PI * Math.min(1, t * 0.5 + 0.5)), 0.5)
+            const y = H * 0.5 + Math.sin(t * S.cyc * 6.283 * (1 + L * 0.3) - S.ph * (1 + L * 0.35) + L * 1.3) * (0.035 + h * 0.9) * env * H * 0.44 * (1 - L * 0.27)
             x ? ctx.lineTo(x, y) : ctx.moveTo(x, y)
           }
-          ctx.lineWidth = 7 - L * 2; ctx.strokeStyle = rgba(col, [0.9, 0.5, 0.3][L]); ctx.stroke()
+          ctx.lineWidth = 8 - L * 2; ctx.strokeStyle = rgba(col, [0.9, 0.5, 0.3][L]); ctx.stroke()
+        }
+        // live level meter: little bars that jump up and down with the voice
+        const bars = 14, bw = Math.min(14, W / 60), bx = W * 0.04
+        for (let b = 0; b < bars; b++) {
+          const hh = 6 + (S.hist[N - 1 - b * 4] || 0) * H * 0.3
+          ctx.fillStyle = rgba(col, 0.55 - b * 0.03); ctx.beginPath(); ctx.roundRect?.(bx + b * bw * 1.6, H * 0.96 - hh, bw, hh, 5); ctx.roundRect ? ctx.fill() : ctx.fillRect(bx + b * bw * 1.6, H * 0.96 - hh, bw, hh)
         }
       }
 
@@ -86,8 +94,17 @@ export default function VoiceStage({ read, active, goalMs, glide, gain = 1, redu
       glow.addColorStop(0, rgba(col, 0.38 + 0.2 * S.warm)); glow.addColorStop(1, rgba(col, 0))
       ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(cx, by, gr, 0, 7); ctx.fill()
       const body = ctx.createRadialGradient(cx - S.r * 0.3, by - S.r * 0.35, S.r * 0.1, cx, by, S.r)
-      body.addColorStop(0, rgba(mix(col, [255, 255, 255], 0.35), 1)); body.addColorStop(1, rgba(col, 0.92))
+      body.addColorStop(0, rgba(mix(col, AV.glow, 0.55), 1)); body.addColorStop(1, rgba(col, 0.92))
       ctx.fillStyle = body; ctx.beginPath(); ctx.arc(cx, by, S.r, 0, 7); ctx.fill()
+      // avatar accessories (drawn behind the face): each friend looks different
+      const R = S.r, st = Math.sin(S.t * 6) * (v.voiced ? 1 : 0.3)
+      ctx.fillStyle = rgba(mix(AV.body, [255, 255, 255], 0.25), 1); ctx.strokeStyle = rgba(mix(AV.body, [0, 0, 0], 0.3), 0.6); ctx.lineWidth = 2
+      const tri = (x1, y1, x2, y2, x3, y3, f) => { ctx.fillStyle = f; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.lineTo(x3, y3); ctx.closePath(); ctx.fill() }
+      if (AV.id === 'ember') { [-1, 1].forEach((sd) => { tri(cx + sd * R * 0.45, by - R * 0.85, cx + sd * R * 0.3, by - R * 1.3, cx + sd * R * 0.7, by - R * 0.9, '#ffe9a8'); tri(cx + sd * R * 0.95, by + R * 0.1, cx + sd * R * (1.5 + 0.1 * st), by - R * 0.35, cx + sd * R * 1.0, by + R * 0.5, rgba(AV.body, 0.9)) }) }
+      if (AV.id === 'stardust') { tri(cx - R * 0.1, by - R * 0.9, cx, by - R * (1.55 + 0.1 * S.lv), cx + R * 0.1, by - R * 0.9, '#fff3b0'); [-1, 1].forEach((sd) => tri(cx + sd * R * 0.5, by - R * 0.8, cx + sd * R * 0.55, by - R * 1.15, cx + sd * R * 0.78, by - R * 0.7, rgba(AV.body, 1))) }
+      if (AV.id === 'merlo') { tri(cx - R * 0.8, by - R * 0.55, cx + R * 0.1 + st * 4, by - R * 1.75, cx + R * 0.8, by - R * 0.55, '#4a3aa8'); ctx.fillStyle = '#ffd86b'; ctx.beginPath(); ctx.ellipse(cx, by - R * 0.58, R * 0.95, R * 0.12, 0, 0, 7); ctx.fill() }
+      if (AV.id === 'fizz') { [-1, 1].forEach((sd) => { ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.beginPath(); ctx.ellipse(cx + sd * R * 1.15, by - R * 0.15 + st * 3, R * 0.5, R * (0.8 + 0.1 * st), sd * 0.5, 0, 7); ctx.fill() }) }
+      if (outfit) { ctx.font = `${Math.round(R * 0.7)}px serif`; ctx.textAlign = 'center'; ctx.fillText(outfit, cx + (AV.id === 'lumi' ? R * 0.6 : 0), by - R * (AV.id === 'merlo' ? 1.5 : 1.05)) }
       // face: blinks every ~4 s, mouth opens with the voice
       S.t += dt
       const er = S.r * 0.085, ex = S.r * 0.3, ey = by - S.r * 0.1, blink = !reduced && S.t % 4 < 0.12 ? 0.15 : 1
@@ -107,7 +124,7 @@ export default function VoiceStage({ read, active, goalMs, glide, gain = 1, redu
         S.sparks.forEach((p) => {
           p.x += p.vx * dt; p.y += p.vy * dt
           const al = 1 - p.a / 1.4, z = p.size * (0.6 + 0.4 * al)
-          ctx.fillStyle = rgba([255, 226, 150], 0.9 * al); ctx.beginPath()
+          ctx.fillStyle = rgba(WD.spark, 0.9 * al); ctx.beginPath()
           ctx.moveTo(p.x, p.y - z); ctx.lineTo(p.x + z * 0.3, p.y - z * 0.3); ctx.lineTo(p.x + z, p.y); ctx.lineTo(p.x + z * 0.3, p.y + z * 0.3)
           ctx.lineTo(p.x, p.y + z); ctx.lineTo(p.x - z * 0.3, p.y + z * 0.3); ctx.lineTo(p.x - z, p.y); ctx.lineTo(p.x - z * 0.3, p.y - z * 0.3); ctx.closePath(); ctx.fill()
         })

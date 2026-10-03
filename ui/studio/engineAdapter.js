@@ -34,7 +34,7 @@ export const levelPrompt = (l) => {
     loudness_ramp: 'Start quiet. Get louder, slowly.',
   }[l.type] ?? 'Make a sound.'
 }
-export const levelGoalMs = (l) => l.targetMs ?? l.minDurationMs ?? l.durationMs ?? (l.seconds ? l.seconds * 1000 : l.targetSeconds ? l.targetSeconds * 1000 : null)
+export const levelGoalMs = (l) => l.targetMs ?? l.minDurationMs ?? l.durationMs ?? (l.targetDurationSec ? l.targetDurationSec * 1000 : null) ?? (l.seconds ? l.seconds * 1000 : l.targetSeconds ? l.targetSeconds * 1000 : null)
 export const silenceEndMs = (l) => (l.type === 'cv_syllable' ? 3000 : 1600)
 // small facts that make levels of the same type look different on the menu
 export const levelChips = (l) => {
