@@ -32,8 +32,8 @@ def praat_ref(e, r):
     import parselmouth
     from parselmouth.praat import call
     snd = parselmouth.Sound(os.path.join(base, e["file"]))
-    calib = e.get("calibSec", 0 if (e.get("noiseFile") or e.get("calibQuietest")) else 0.8)
-    if not (e.get("noiseFile") or e.get("calibQuietest")) and calib: snd = snd.extract_part(from_time=calib, preserve_times=False)
+    calib = e.get("calibSec", 0 if (e.get("noiseFile") or e.get("calibQuietest") or e.get("calibFloorDb") is not None) else 0.8)
+    if not (e.get("noiseFile") or e.get("calibQuietest") or e.get("calibFloorDb") is not None) and calib: snd = snd.extract_part(from_time=calib, preserve_times=False)
     lo, hi = PROFILE_F0[e.get("profile", "child")]
     pit = snd.to_pitch_ac(time_step=0.005, pitch_floor=lo, pitch_ceiling=hi, very_accurate=False)
     f0 = pit.selected_array["frequency"]; voiced = f0 > 0
@@ -56,6 +56,37 @@ def praat_ref(e, r):
         out.update(f0MeanHz=float(np.mean(f0[voiced])), f0SdSemitones=float(np.std(st, ddof=1)),
                    rangeSemitones=float(np.percentile(st, 95) - np.percentile(st, 5)))
     return out
+
+
+# ---------------------------------------------------------------- frame-level engine vs Praat (octave-aware)
+OCT_TOL, AGREE_TOL = 150, 100   # cents: within 150 of +-1200 = octave frame; within 100 of 0 = agree
+def frame_compare(eng, pr):
+    """eng, pr: per-frame F0 lists (None/0/nan = unvoiced) at the same times. Returns counts and metrics on frames where both agree."""
+    both, n_agree, n_oct, n_other = [], 0, 0, 0
+    for en, p in zip(eng, pr):
+        if not en or not p or (isinstance(p, float) and math.isnan(p)): continue
+        c = 1200 * math.log2(en / p)
+        if abs(c) <= AGREE_TOL: n_agree += 1; both.append((en, p))
+        elif abs(abs(c) - 1200) <= OCT_TOL: n_oct += 1
+        else: n_other += 1
+    out = {"n_agree": n_agree, "n_oct": n_oct, "n_other": n_other}
+    def mets(v):
+        v = np.array(v, float); st = 12 * np.log2(v / np.median(v))
+        return dict(f0MeanHz=float(v.mean()), f0SdSemitones=float(st.std(ddof=1)), rangeSemitones=float(np.percentile(st, 95) - np.percentile(st, 5)))
+    if len(both) >= 5:
+        out["eng"] = mets([b[0] for b in both]); out["praat"] = mets([b[1] for b in both])
+    return out
+
+def praat_frames(e, r):
+    """Praat F0 sampled at the engine's contour times (same time origin as praat_ref)."""
+    import parselmouth
+    snd = parselmouth.Sound(os.path.join(base, e["file"]))
+    calib = e.get("calibSec", 0 if (e.get("noiseFile") or e.get("calibQuietest") or e.get("calibFloorDb") is not None) else 0.8)
+    if not (e.get("noiseFile") or e.get("calibQuietest") or e.get("calibFloorDb") is not None) and calib: snd = snd.extract_part(from_time=calib, preserve_times=False)
+    lo, hi = PROFILE_F0[e.get("profile", "child")]
+    pit = snd.to_pitch_ac(time_step=0.005, pitch_floor=lo, pitch_ceiling=hi, very_accurate=False)
+    cont = r["result"].get("contour") or []
+    return [c.get("f0") for c in cont], [pit.get_value_at_time(c["t"]) for c in cont]
 
 # ---------------------------------------------------------------- stats helpers
 def agree(name, x, y, tol=None, unit=""):
@@ -96,6 +127,18 @@ for key, tol, unit in [("mptSec", 0.25, "s"), ("f0MeanHz", None, "Hz"), ("f0SdSe
         agree(f"{key} vs Praat", eng, [praat[e["id"]].get(key, float("nan")) for e, r in rows], tol, unit)
     truth = [e.get("truth", {}).get(key, float("nan")) for e, r in rows]
     if not all(math.isnan(v) for v in truth): agree(f"{key} vs human", eng, truth, tol, unit)
+fc = {}
+if praat:
+    for e, r in rows:
+        try: fc[e["id"]] = frame_compare(*praat_frames(e, r))
+        except Exception as ex: pass
+    m = [(v["eng"], v["praat"]) for v in fc.values() if "eng" in v]
+    tot = {k: sum(v[k] for v in fc.values()) for k in ("n_agree", "n_oct", "n_other")}; T = max(1, sum(tot.values()))
+    print(f"  frame-level: of {T} frames where both tools hear a pitch, {100*tot['n_agree']/T:.0f}% agree (<{AGREE_TOL} cents), {100*tot['n_oct']/T:.1f}% are an octave apart, {100*tot['n_other']/T:.1f}% differ otherwise")
+    if m:
+        print("  same metrics on frames where both agree (octave-halved/doubled frames removed):")
+        for key, tol, unit in [("f0MeanHz", None, "Hz"), ("f0SdSemitones", 0.3, "st"), ("rangeSemitones", 1.0, "st")]:
+            agree(f"{key} (agreed frames)", [x[key] for x, y in m], [y[key] for x, y in m], tol, unit)
 cnt_t = [(metric(r, "syllableCount"), e["truth"]["count"]) for e, r in rows if "count" in e.get("truth", {}) and metric(r, "syllableCount") is not None]
 if cnt_t:
     d = np.array([p - t for p, t in cnt_t]); print(f"  syllable count vs human  n={len(d)}  exact={100*np.mean(d==0):.0f}%  within±1={100*np.mean(abs(d)<=1):.0f}%  bias={d.mean():+.2f}  MAE={np.abs(d).mean():.2f}  (over-count {np.sum(d>0)}, under-count {np.sum(d<0)})")
@@ -168,7 +211,7 @@ def cents(a_, b_): return 1200 * math.log2(a_ / b_)
 bygrp = {}
 for e, r in rows: bygrp.setdefault(e.get("group") or "all", []).append((e, r))
 worst = []
-print(f"  {'group':<34}{'n':>4} {'no_voicing':>11} {'unreliable':>11} {'F0 median |err|':>16} {'octave errs':>12}")
+print(f"  {'group':<34}{'n':>4} {'no_voicing':>11} {'unreliable':>11} {'F0 median |err|':>16} {'octave errs':>12} {'oct frames':>11}")
 for g, items in sorted(bygrp.items()):
     nv = sum("no_voicing" in r["result"]["quality"]["flags"] for e, r in items)
     ur = sum(not r["result"]["quality"]["reliable"] for e, r in items)
@@ -180,9 +223,14 @@ for g, items in sorted(bygrp.items()):
             if abs(abs(c) - 1200) < 250: octv += 1
             worst.append((abs(c), e["id"], g, en, pe))
     med = f"{np.median(errs):.0f} cents" if errs else "n/a"
-    print(f"  {g[:33]:<34}{len(items):>4} {100*nv/len(items):>10.0f}% {100*ur/len(items):>10.0f}% {med:>16} {octv:>7}/{cmp_n}")
+    gt = sum(fc[e["id"]]["n_agree"] + fc[e["id"]]["n_oct"] + fc[e["id"]]["n_other"] for e, r in items if e["id"] in fc)
+    go = sum(fc[e["id"]]["n_oct"] for e, r in items if e["id"] in fc)
+    octf = f"{100*go/gt:.1f}%" if gt else "n/a"
+    print(f"  {g[:33]:<34}{len(items):>4} {100*nv/len(items):>10.0f}% {100*ur/len(items):>10.0f}% {med:>16} {octv:>7}/{cmp_n} {octf:>11}")
 if worst:
     worst.sort(reverse=True)
     print("  largest engine-vs-Praat F0 disagreements (LISTEN to these; either tool may be the wrong one):")
     for c, i, g, en, pe in worst[:10]: print(f"    {i:<36} {g[:22]:<22} engine {en:7.1f} Hz  praat {pe:7.1f} Hz  ({c:.0f} cents)")
+    octclips = sorted(((fc[i]["n_oct"] / max(1, fc[i]["n_agree"] + fc[i]["n_oct"] + fc[i]["n_other"]), i) for i in fc), reverse=True)[:5]
+    if octclips and octclips[0][0] > 0: print("  clips with most octave-apart frames (usually Praat locking onto a subharmonic; check f0_compare.py + ear): " + ", ".join(f"{i} ({100*f:.0f}%)" for f, i in octclips if f > 0))
     print("  100 cents = 1 semitone. Praat is a second opinion, not the truth: a recording where they disagree is a recording to check by ear.")

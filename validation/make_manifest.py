@@ -23,6 +23,7 @@ ap.add_argument("--seed", type=int, default=1)
 ap.add_argument("--group", help="generic: fixed group name (default: parent folder name)")
 ap.add_argument("--type", default="sustained_voicing")
 ap.add_argument("--syllable", default="ba"); ap.add_argument("--target", type=float, default=1.0)
+ap.add_argument("--floor-db", type=float, help="declared room-noise level in dBFS RMS for the whole dataset (from inspect_clips.py); replaces the per-clip quietest-window guess")
 ap.add_argument("--no-quietest", action="store_true", help="do NOT calibrate on the clip's quietest windows (use if clips have a silent lead-in: then set calibSec yourself)")
 a = ap.parse_args()
 base = os.path.dirname(os.path.abspath(a.out))
@@ -39,7 +40,8 @@ def level_for(kind):
 def add(i, path, group, level, **extra):
     e = {"id": i, "file": rel(path), "group": group, "device": extra.pop("device", None), "profile": a.profile,
          "level": level, "truth": {}}
-    if not a.no_quietest: e["calibQuietest"] = True
+    if a.floor_db is not None: e["calibFloorDb"] = a.floor_db
+    elif not a.no_quietest: e["calibQuietest"] = True
     e.update(extra); entries.append(e)
 
 if a.preset == "svd":

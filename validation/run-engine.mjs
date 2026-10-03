@@ -11,6 +11,7 @@
 //     "level": { "id": "mpt", "type": "sustained_voicing", "targetDurationSec": 5 },
 //     "calibSec": 0.8,                          // use the first N s of the file as the "stay quiet" calibration (0 = skip)
 //     "noiseFile": "data/room.wav",             // OR a separate noise-only clip for calibration
+//     "calibFloorDb": -62,                      // OR a room-noise level (dBFS RMS) you measured for the whole dataset (see inspect_clips.py)
 //     "calibQuietest": true,                    // OR no silence available: calibrate on the clip's own quietest 5% (see quietestNoise)
 //     "truth": { "passed": true, "count": 5, "mptSec": 6.2 } }   // whatever labels you have
 import fs from 'node:fs';
@@ -71,6 +72,11 @@ function runOne(e, base) {
     x = addNoise(x, rms, rand);
     if (noiseClip) noiseClip = addNoise(noiseClip, rms, rand);
   }
+  if (!noiseClip && e.calibFloorDb != null) {
+    // Declared room-noise level (dBFS RMS) shared by a whole dataset recorded in one room. ASSUMPTION, recorded in calib.source.
+    const r = rng(seed + 23), a = 10 ** (e.calibFloorDb / 20) * Math.sqrt(3), n = Math.round(1.0 * fs_);
+    noiseClip = new Float32Array(n); for (let i = 0; i < n; i++) noiseClip[i] = (r() * 2 - 1) * a;
+  }
   if (!noiseClip && e.calibQuietest) noiseClip = quietestNoise(x, fs_, rng(seed + 17));
   const calibSec = e.calibSec ?? (noiseClip ? 0 : 0.8);
   const an = new PhonationAnalyzer({ sampleRate: fs_, profile: e.profile ?? 'child' });
@@ -80,7 +86,7 @@ function runOne(e, base) {
   let calib = { ok: null, warnings: ['skipped'], source: 'none' }, trialStart = 0;
   if (noiseClip || calibSec > 0) {
     an.startCalibration();
-    if (noiseClip) { feed(an, noiseClip); trialStart = 0; calib.source = e.calibQuietest ? 'quietest-window' : 'noiseFile'; }
+    if (noiseClip) { feed(an, noiseClip); trialStart = 0; calib.source = e.calibFloorDb != null ? 'declared-floor' : e.calibQuietest ? 'quietest-window' : 'noiseFile'; }
     else { const n = Math.round(calibSec * fs_); feed(an, x.subarray(0, n)); trialStart = n; calib.source = 'lead-in'; }
     const c = an.finishCalibration();
     calib = { ok: c.ok, warnings: c.warnings, noiseDb: c.noise?.db ?? null, transientFraction: c.transientFraction ?? null, source: calib.source };

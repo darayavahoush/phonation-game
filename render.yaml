@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: phonation-game
+    runtime: static
+    buildCommand: npm --prefix standalone install && npm --prefix standalone run build
+    staticPublishPath: standalone/dist

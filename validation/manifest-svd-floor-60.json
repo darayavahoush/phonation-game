@@ -1,0 +1,753 @@
+[
+  {
+    "id": "Dysarthrophonie_1199_a_h",
+    "file": "data/svd/Dysarthrophonie/1199/vowels/1199-a_h.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "sustained",
+      "type": "sustained_voicing",
+      "targetDurationSec": 1.0
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_1199_a_lhl",
+    "file": "data/svd/Dysarthrophonie/1199/vowels/1199-a_lhl.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "glide",
+      "type": "pitch_glide",
+      "direction": "up",
+      "minRangeSemitones": 4
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_1199_i_lhl",
+    "file": "data/svd/Dysarthrophonie/1199/vowels/1199-i_lhl.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "glide",
+      "type": "pitch_glide",
+      "direction": "up",
+      "minRangeSemitones": 4
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_1199_u_l",
+    "file": "data/svd/Dysarthrophonie/1199/vowels/1199-u_l.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "sustained",
+      "type": "sustained_voicing",
+      "targetDurationSec": 1.0
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_1242_u_l",
+    "file": "data/svd/Dysarthrophonie/1242/vowels/1242-u_l.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "sustained",
+      "type": "sustained_voicing",
+      "targetDurationSec": 1.0
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_1772_a_lhl",
+    "file": "data/svd/Dysarthrophonie/1772/vowels/1772-a_lhl.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "glide",
+      "type": "pitch_glide",
+      "direction": "up",
+      "minRangeSemitones": 4
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_1772_u_h",
+    "file": "data/svd/Dysarthrophonie/1772/vowels/1772-u_h.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "sustained",
+      "type": "sustained_voicing",
+      "targetDurationSec": 1.0
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_1943_i_h",
+    "file": "data/svd/Dysarthrophonie/1943/vowels/1943-i_h.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "sustained",
+      "type": "sustained_voicing",
+      "targetDurationSec": 1.0
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_1943_u_l",
+    "file": "data/svd/Dysarthrophonie/1943/vowels/1943-u_l.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "sustained",
+      "type": "sustained_voicing",
+      "targetDurationSec": 1.0
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_1948_i_lhl",
+    "file": "data/svd/Dysarthrophonie/1948/vowels/1948-i_lhl.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "glide",
+      "type": "pitch_glide",
+      "direction": "up",
+      "minRangeSemitones": 4
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_1948_u_lhl",
+    "file": "data/svd/Dysarthrophonie/1948/vowels/1948-u_lhl.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "glide",
+      "type": "pitch_glide",
+      "direction": "up",
+      "minRangeSemitones": 4
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_2001_u_n",
+    "file": "data/svd/Dysarthrophonie/2001/vowels/2001-u_n.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "sustained",
+      "type": "sustained_voicing",
+      "targetDurationSec": 1.0
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_2032_u_lhl",
+    "file": "data/svd/Dysarthrophonie/2032/vowels/2032-u_lhl.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "glide",
+      "type": "pitch_glide",
+      "direction": "up",
+      "minRangeSemitones": 4
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_2057_a_n",
+    "file": "data/svd/Dysarthrophonie/2057/vowels/2057-a_n.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "sustained",
+      "type": "sustained_voicing",
+      "targetDurationSec": 1.0
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_2057_i_n",
+    "file": "data/svd/Dysarthrophonie/2057/vowels/2057-i_n.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "sustained",
+      "type": "sustained_voicing",
+      "targetDurationSec": 1.0
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_2094_a_lhl",
+    "file": "data/svd/Dysarthrophonie/2094/vowels/2094-a_lhl.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "glide",
+      "type": "pitch_glide",
+      "direction": "up",
+      "minRangeSemitones": 4
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_2113_a_lhl",
+    "file": "data/svd/Dysarthrophonie/2113/vowels/2113-a_lhl.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "glide",
+      "type": "pitch_glide",
+      "direction": "up",
+      "minRangeSemitones": 4
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_2113_i_lhl",
+    "file": "data/svd/Dysarthrophonie/2113/vowels/2113-i_lhl.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "glide",
+      "type": "pitch_glide",
+      "direction": "up",
+      "minRangeSemitones": 4
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_2130_u_l",
+    "file": "data/svd/Dysarthrophonie/2130/vowels/2130-u_l.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "sustained",
+      "type": "sustained_voicing",
+      "targetDurationSec": 1.0
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_2223_a_h",
+    "file": "data/svd/Dysarthrophonie/2223/vowels/2223-a_h.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "sustained",
+      "type": "sustained_voicing",
+      "targetDurationSec": 1.0
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_2223_a_lhl",
+    "file": "data/svd/Dysarthrophonie/2223/vowels/2223-a_lhl.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "glide",
+      "type": "pitch_glide",
+      "direction": "up",
+      "minRangeSemitones": 4
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_2223_i_lhl",
+    "file": "data/svd/Dysarthrophonie/2223/vowels/2223-i_lhl.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "glide",
+      "type": "pitch_glide",
+      "direction": "up",
+      "minRangeSemitones": 4
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_2295_a_n",
+    "file": "data/svd/Dysarthrophonie/2295/vowels/2295-a_n.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "sustained",
+      "type": "sustained_voicing",
+      "targetDurationSec": 1.0
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_2295_i_lhl",
+    "file": "data/svd/Dysarthrophonie/2295/vowels/2295-i_lhl.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "glide",
+      "type": "pitch_glide",
+      "direction": "up",
+      "minRangeSemitones": 4
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_2295_u_h",
+    "file": "data/svd/Dysarthrophonie/2295/vowels/2295-u_h.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "sustained",
+      "type": "sustained_voicing",
+      "targetDurationSec": 1.0
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_2295_u_l",
+    "file": "data/svd/Dysarthrophonie/2295/vowels/2295-u_l.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "sustained",
+      "type": "sustained_voicing",
+      "targetDurationSec": 1.0
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_2329_i_h",
+    "file": "data/svd/Dysarthrophonie/2329/vowels/2329-i_h.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "sustained",
+      "type": "sustained_voicing",
+      "targetDurationSec": 1.0
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_2329_u_l",
+    "file": "data/svd/Dysarthrophonie/2329/vowels/2329-u_l.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "sustained",
+      "type": "sustained_voicing",
+      "targetDurationSec": 1.0
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_2329_u_lhl",
+    "file": "data/svd/Dysarthrophonie/2329/vowels/2329-u_lhl.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "glide",
+      "type": "pitch_glide",
+      "direction": "up",
+      "minRangeSemitones": 4
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_2332_a_h",
+    "file": "data/svd/Dysarthrophonie/2332/vowels/2332-a_h.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "sustained",
+      "type": "sustained_voicing",
+      "targetDurationSec": 1.0
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_2332_i_lhl",
+    "file": "data/svd/Dysarthrophonie/2332/vowels/2332-i_lhl.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "glide",
+      "type": "pitch_glide",
+      "direction": "up",
+      "minRangeSemitones": 4
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_2334_i_lhl",
+    "file": "data/svd/Dysarthrophonie/2334/vowels/2334-i_lhl.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "glide",
+      "type": "pitch_glide",
+      "direction": "up",
+      "minRangeSemitones": 4
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_2355_a_l",
+    "file": "data/svd/Dysarthrophonie/2355/vowels/2355-a_l.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "sustained",
+      "type": "sustained_voicing",
+      "targetDurationSec": 1.0
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_2355_a_lhl",
+    "file": "data/svd/Dysarthrophonie/2355/vowels/2355-a_lhl.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "glide",
+      "type": "pitch_glide",
+      "direction": "up",
+      "minRangeSemitones": 4
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_2355_i_lhl",
+    "file": "data/svd/Dysarthrophonie/2355/vowels/2355-i_lhl.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "glide",
+      "type": "pitch_glide",
+      "direction": "up",
+      "minRangeSemitones": 4
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_2355_u_lhl",
+    "file": "data/svd/Dysarthrophonie/2355/vowels/2355-u_lhl.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "glide",
+      "type": "pitch_glide",
+      "direction": "up",
+      "minRangeSemitones": 4
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_2390_a_lhl",
+    "file": "data/svd/Dysarthrophonie/2390/vowels/2390-a_lhl.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "glide",
+      "type": "pitch_glide",
+      "direction": "up",
+      "minRangeSemitones": 4
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_2390_a_n",
+    "file": "data/svd/Dysarthrophonie/2390/vowels/2390-a_n.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "sustained",
+      "type": "sustained_voicing",
+      "targetDurationSec": 1.0
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_921_a_lhl",
+    "file": "data/svd/Dysarthrophonie/921/vowels/921-a_lhl.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "glide",
+      "type": "pitch_glide",
+      "direction": "up",
+      "minRangeSemitones": 4
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Dysarthrophonie_921_i_l",
+    "file": "data/svd/Dysarthrophonie/921/vowels/921-i_l.wav",
+    "group": "pathological/Dysarthrophonie",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "sustained",
+      "type": "sustained_voicing",
+      "targetDurationSec": 1.0
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Morbus-Parkinson_1580_a_h",
+    "file": "data/svd/Morbus Parkinson/1580/vowels/1580-a_h.wav",
+    "group": "pathological/Morbus Parkinson",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "sustained",
+      "type": "sustained_voicing",
+      "targetDurationSec": 1.0
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Morbus-Parkinson_1580_a_l",
+    "file": "data/svd/Morbus Parkinson/1580/vowels/1580-a_l.wav",
+    "group": "pathological/Morbus Parkinson",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "sustained",
+      "type": "sustained_voicing",
+      "targetDurationSec": 1.0
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Morbus-Parkinson_1580_a_lhl",
+    "file": "data/svd/Morbus Parkinson/1580/vowels/1580-a_lhl.wav",
+    "group": "pathological/Morbus Parkinson",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "glide",
+      "type": "pitch_glide",
+      "direction": "up",
+      "minRangeSemitones": 4
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Morbus-Parkinson_1580_a_n",
+    "file": "data/svd/Morbus Parkinson/1580/vowels/1580-a_n.wav",
+    "group": "pathological/Morbus Parkinson",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "sustained",
+      "type": "sustained_voicing",
+      "targetDurationSec": 1.0
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Morbus-Parkinson_1580_i_h",
+    "file": "data/svd/Morbus Parkinson/1580/vowels/1580-i_h.wav",
+    "group": "pathological/Morbus Parkinson",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "sustained",
+      "type": "sustained_voicing",
+      "targetDurationSec": 1.0
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Morbus-Parkinson_1580_i_l",
+    "file": "data/svd/Morbus Parkinson/1580/vowels/1580-i_l.wav",
+    "group": "pathological/Morbus Parkinson",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "sustained",
+      "type": "sustained_voicing",
+      "targetDurationSec": 1.0
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Morbus-Parkinson_1580_i_lhl",
+    "file": "data/svd/Morbus Parkinson/1580/vowels/1580-i_lhl.wav",
+    "group": "pathological/Morbus Parkinson",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "glide",
+      "type": "pitch_glide",
+      "direction": "up",
+      "minRangeSemitones": 4
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Morbus-Parkinson_1580_i_n",
+    "file": "data/svd/Morbus Parkinson/1580/vowels/1580-i_n.wav",
+    "group": "pathological/Morbus Parkinson",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "sustained",
+      "type": "sustained_voicing",
+      "targetDurationSec": 1.0
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Morbus-Parkinson_1580_u_h",
+    "file": "data/svd/Morbus Parkinson/1580/vowels/1580-u_h.wav",
+    "group": "pathological/Morbus Parkinson",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "sustained",
+      "type": "sustained_voicing",
+      "targetDurationSec": 1.0
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Morbus-Parkinson_1580_u_l",
+    "file": "data/svd/Morbus Parkinson/1580/vowels/1580-u_l.wav",
+    "group": "pathological/Morbus Parkinson",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "sustained",
+      "type": "sustained_voicing",
+      "targetDurationSec": 1.0
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Morbus-Parkinson_1580_u_lhl",
+    "file": "data/svd/Morbus Parkinson/1580/vowels/1580-u_lhl.wav",
+    "group": "pathological/Morbus Parkinson",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "glide",
+      "type": "pitch_glide",
+      "direction": "up",
+      "minRangeSemitones": 4
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  },
+  {
+    "id": "Morbus-Parkinson_1580_u_n",
+    "file": "data/svd/Morbus Parkinson/1580/vowels/1580-u_n.wav",
+    "group": "pathological/Morbus Parkinson",
+    "device": "clinic-studio",
+    "profile": "adult",
+    "level": {
+      "id": "sustained",
+      "type": "sustained_voicing",
+      "targetDurationSec": 1.0
+    },
+    "truth": {},
+    "calibFloorDb": -60.0
+  }
+]

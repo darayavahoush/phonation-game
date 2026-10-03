@@ -1,12 +1,22 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { fileURLToPath } from 'node:url'
 
-// Root is this folder; the module (engine + ui/) lives one level up.
-// Files up there import 'react', which is installed here, so tell Vite to
-// resolve React from this folder for every importer. Without `dedupe` those
-// imports fail ("react could not be resolved") because no node_modules sits above them.
+const here = (p) => fileURLToPath(new URL(p, import.meta.url))
+
+// Root is this folder; the app imports modules one level up (../ui, ../PhonationEngine.js), which have no node_modules
+// of their own, so pin react to this folder's copy.
 export default defineConfig({
   plugins: [react()],
-  resolve: { dedupe: ['react', 'react-dom'] },
+  resolve: {
+    dedupe: ['react', 'react-dom'],
+    alias: [
+      { find: /^react$/, replacement: here('./node_modules/react/index.js') },
+      { find: /^react\/(.*)$/, replacement: here('./node_modules/react/$1') },
+      { find: /^react-dom$/, replacement: here('./node_modules/react-dom/index.js') },
+      { find: /^react-dom\/(.*)$/, replacement: here('./node_modules/react-dom/$1') },
+    ],
+  },
+  build: { assetsInlineLimit: 0 }, // emit the audio worklet as a real file (a data: URL is flaky in Safari)
   server: { fs: { allow: ['..'] } },
 })
