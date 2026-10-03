@@ -1,1 +1,6 @@
-{"type":"module"}
+{
+  "type": "module",
+  "scripts": {
+    "test": "node --test __tests__/phonation.test.js __tests__/recognition.test.js"
+  }
+}

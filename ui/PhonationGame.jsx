@@ -10,8 +10,11 @@ const FLAG_TEXT = {
   low_snr: 'Voice is weak compared with room noise',
   no_voicing: 'No voicing detected',
 }
+const EXPERIMENTAL_METRICS = new Set(['votMeanMs', 'votSdMs', 'mannerMatches', 'expectedManner'])
 const INTENSITY = { soft: 0.35, normal: 0.6, strong: 0.9 }
-const SILENCE_END_MS = 1600 // stop after this much silence once voicing has occurred
+
+// Stop after this much silence once voicing has occurred. Syllable levels allow longer pauses.
+const silenceEndMs = (l) => (l.type === 'cv_syllable' ? 3000 : 1600)
 
 function maxSeconds(l) {
   if (l.maxDurationSec) return l.maxDurationSec
@@ -41,6 +44,32 @@ function Sparkline({ contour }) {
   )
 }
 
+const words = (s) => String(s).replaceAll('_', ' ')
+
+function RecognitionBlock({ rec }) {
+  if (!rec) return null
+  return (
+    <div className="ph-muted">
+      <h4>On-device phoneme check <span className="ph-badge warn">experimental</span></h4>
+      {rec.ok === false ? (
+        <p>Not available: {words(rec.reason || rec.error || 'unknown')}</p>
+      ) : (
+        <>
+          <p>Heard: {(rec.heard || []).join(' ') || '–'}</p>
+          {rec.consonant && (
+            <p>
+              Consonant /{rec.consonant.target}/: {words(rec.consonant.verdict)} (LLR {rec.consonant.llr}
+              {rec.consonant.bestCompetitor ? `, closest competitor /${rec.consonant.bestCompetitor}/` : ''})
+            </p>
+          )}
+          {rec.vowel && <p>Vowel /{rec.vowel.target}/: {words(rec.vowel.verdict)} (LLR {rec.vowel.llr})</p>}
+        </>
+      )}
+      {(rec.caveats || []).map((c) => <p key={c}>{c}</p>)}
+    </div>
+  )
+}
+
 function TherapistPanel({ result }) {
   const q = result.quality
   const download = () => {
@@ -52,7 +81,7 @@ function TherapistPanel({ result }) {
   }
   return (
     <section className="ph-panel" aria-label="Clinician view">
-      <h3>{result.levelId} · {result.type.replace('_', ' ')}</h3>
+      <h3>{result.levelId} · {words(result.type)}</h3>
       <p>
         {result.passed ? 'Passed' : 'Not passed'} · progress {Math.round(result.progress * 100)}% · {result.durationSec.toFixed(1)} s
         <span className={q.reliable ? 'ph-badge ok' : 'ph-badge warn'}>{q.reliable ? 'Reliable' : 'Interpret with caution'}</span>
@@ -61,48 +90,72 @@ function TherapistPanel({ result }) {
       <table>
         <tbody>
           {Object.entries(result.metrics).map(([k, v]) => (
-            <tr key={k}><th>{k}</th><td>{typeof v === 'number' ? Math.round(v * 1000) / 1000 : String(v)}</td></tr>
+            <tr key={k}>
+              <th>{k}{EXPERIMENTAL_METRICS.has(k) && <span className="ph-badge warn">experimental</span>}</th>
+              <td>{v == null ? '–' : typeof v === 'number' ? Math.round(v * 1000) / 1000 : String(v)}</td>
+            </tr>
           ))}
           <tr><th>SNR (dB)</th><td>{q.snrDb != null ? q.snrDb.toFixed(1) : '–'}</td></tr>
         </tbody>
       </table>
       <Sparkline contour={result.contour} />
+      <RecognitionBlock rec={result.recognition} />
       <p className="ph-muted">Level is relative dBFS, not dB SPL. Use for within-child change only.</p>
       <button className="ph-btn ph-ghost" onClick={download}>Download trial JSON</button>
     </section>
   )
 }
 
-export default function PhonationGame({ profile = 'child', levels = STARTER_LEVELS, onResult, onExit }) {
-  const [stage, setStage] = useState('intro') // intro | calibrating | menu | trial | result
+/**
+ * Props
+ *  - recognizer:           optional on-device recognizer (see recognition/recognizers.js). Experimental; never
+ *                          changes passed/stars. Its model loads in the background and is skipped for any trial
+ *                          that starts before it is ready, so a child never waits on a download.
+ *  - clinicianView:        initial value of the clinician panel toggle
+ *  - showClinicianToggle:  set false in production so the child cannot open the clinician view
+ */
+export default function PhonationGame({
+  profile = 'child', levels = STARTER_LEVELS, recognizer = null,
+  clinicianView = false, showClinicianToggle = true, onResult, onExit,
+}) {
+  const [stage, setStage] = useState('intro') // intro | starting | calibrating | menu | trial | finishing | result
   const [error, setError] = useState(null)
   const [calWarn, setCalWarn] = useState([])
+  const [capture, setCapture] = useState(null)
   const [level, setLevel] = useState(null)
   const [result, setResult] = useState(null)
-  const [clinician, setClinician] = useState(false)
+  const [clinician, setClinician] = useState(clinicianView)
   const [intensity, setIntensity] = useState('normal')
   const engine = useRef(null)
   const orb = useRef(null), bar = useRef(null), dbg = useRef(null)
-  const trial = useRef({ active: false, seen: false, lastVoice: 0, start: 0 })
+  const trial = useRef({ active: false, seen: false, lastVoice: 0, start: 0, rec: false })
+  const recReady = useRef(false)
+  const onResultRef = useRef(onResult)
+  onResultRef.current = onResult
   const debug = typeof location !== 'undefined' && new URLSearchParams(location.search).has('debug')
 
-  const finish = useCallback(() => {
+  const finish = useCallback(async () => {
     const t = trial.current
     if (!t.active || !engine.current) return
     t.active = false
+    setStage('finishing')
     try {
-      const r = engine.current.endTrial()
+      const r = t.rec
+        ? await engine.current.endTrialAndRecognize(recognizer)
+        : engine.current.endTrial()
       setResult(r)
-      onResult?.(r)
+      onResultRef.current?.(r)
       setStage('result')
     } catch (e) { setError(e.message); setStage('menu') }
-  }, [onResult])
+  }, [recognizer])
 
   // Single rAF loop: reads engine.live and writes DOM directly (no per-frame setState).
   useEffect(() => {
     if (stage !== 'menu' && stage !== 'trial') return
     let raf, smooth = 0
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    const onHidden = () => { if (document.hidden && trial.current.active) finish() } // rAF pauses in background tabs
+    document.addEventListener('visibilitychange', onHidden)
     const loop = () => {
       const s = engine.current?.live
       const k = INTENSITY[intensity]
@@ -119,12 +172,12 @@ export default function PhonationGame({ profile = 'child', levels = STARTER_LEVE
         const now = performance.now()
         if (s.voiced) { t.seen = true; t.lastVoice = now }
         if (level.type === 'sustained_voicing' && bar.current) bar.current.style.width = `${Math.min(100, (s.voicedRunSec / level.targetDurationSec) * 100)}%`
-        if ((t.seen && now - t.lastVoice > SILENCE_END_MS) || now - t.start > maxSeconds(level) * 1000) { finish(); return }
+        if ((t.seen && now - t.lastVoice > silenceEndMs(level)) || now - t.start > maxSeconds(level) * 1000) { finish(); return }
       }
       raf = requestAnimationFrame(loop)
     }
     raf = requestAnimationFrame(loop)
-    return () => cancelAnimationFrame(raf)
+    return () => { cancelAnimationFrame(raf); document.removeEventListener('visibilitychange', onHidden) }
   }, [stage, level, intensity, finish])
 
   useEffect(() => () => {
@@ -133,31 +186,50 @@ export default function PhonationGame({ profile = 'child', levels = STARTER_LEVE
   }, [])
 
   const begin = async () => { // must run from a click (iOS needs a user gesture)
+    if (stage === 'starting') return
     setError(null)
+    setStage('starting')
     try {
       engine.current = new PhonationEngine({ profile, onError: (e) => setError(e.message) })
-      await engine.current.start()
+      setCapture(await engine.current.start())
+      if (recognizer) {
+        recReady.current = false
+        recognizer.ready().then(() => { recReady.current = true }).catch((e) => console.warn('Recognizer unavailable:', e.message))
+      }
       setStage('calibrating')
       const cal = await engine.current.calibrate(1500)
       setCalWarn(cal.warnings || [])
       setStage('menu')
     } catch (e) {
+      engine.current?.stop()
       setError(e.name === 'NotAllowedError' ? 'Microphone permission was blocked. Allow it in the browser and try again.' : e.message)
       setStage('intro')
     }
   }
 
+  const recalibrate = async () => {
+    setError(null)
+    setStage('calibrating')
+    try {
+      const cal = await engine.current.calibrate(1500)
+      setCalWarn(cal.warnings || [])
+    } catch (e) { setError(e.message) }
+    setStage('menu')
+  }
+
   const startTrial = (l) => {
     setError(null); setLevel(l); setResult(null)
     try {
-      engine.current.beginTrial(l)
-      trial.current = { active: true, seen: false, lastVoice: 0, start: performance.now() }
+      const rec = !!recognizer && recReady.current
+      engine.current.beginTrial(l, { captureAudio: rec })
+      trial.current = { active: true, seen: false, lastVoice: 0, start: performance.now(), rec }
       setStage('trial')
     } catch (e) { setError(e.message) }
   }
 
   const idx = level ? levels.findIndex((l) => l.id === level.id) : -1
   const next = idx >= 0 ? levels[idx + 1] : null
+  const processed = capture && (capture.autoGainControl || capture.noiseSuppression || capture.echoCancellation)
 
   return (
     <main className="ph-root">
@@ -168,7 +240,9 @@ export default function PhonationGame({ profile = 'child', levels = STARTER_LEVE
             <option value="soft">Soft</option><option value="normal">Normal</option><option value="strong">Strong</option>
           </select>
         </label>
-        <label className="ph-muted"><input type="checkbox" checked={clinician} onChange={(e) => setClinician(e.target.checked)} /> Clinician view</label>
+        {showClinicianToggle && (
+          <label className="ph-muted"><input type="checkbox" checked={clinician} onChange={(e) => setClinician(e.target.checked)} /> Clinician view</label>
+        )}
       </header>
 
       {error && <p role="alert" className="ph-error">{error}</p>}
@@ -176,10 +250,15 @@ export default function PhonationGame({ profile = 'child', levels = STARTER_LEVE
       {stage === 'intro' && (
         <section className="ph-center">
           <h1>Voice game</h1>
-          <p>We use the microphone to see your voice. Nothing is recorded or saved, only how loud and how high it is.</p>
-          <button className="ph-btn" onClick={begin}>Start</button>
+          <p>
+            We use the microphone to see your voice. Your voice is never recorded or saved. Only how loud and how high it is gets measured.
+            {recognizer && ' A sound check runs on this device during each try and is thrown away straight after.'}
+          </p>
+          <button className="ph-btn" onClick={begin} disabled={stage === 'starting'}>Start</button>
         </section>
       )}
+
+      {stage === 'starting' && <section className="ph-center"><h2>Getting ready…</h2></section>}
 
       {stage === 'calibrating' && <section className="ph-center"><h2>Shh… stay quiet for a moment</h2><div className="ph-orb" data-on="0" /></section>}
 
@@ -189,7 +268,21 @@ export default function PhonationGame({ profile = 'child', levels = STARTER_LEVE
 
       {stage === 'menu' && (
         <section className="ph-center">
-          {calWarn.length > 0 && <p className="ph-muted">The room sounds {calWarn.includes('high_noise') ? 'noisy' : 'unsettled'}. A quieter spot will give better results.</p>}
+          {processed && (
+            <p role="status" className="ph-muted">
+              <strong>Heads-up:</strong> this device is adjusting the microphone automatically (gain, noise or echo control).
+              Loudness readings will be unreliable. A headset or a different browser often fixes this.
+            </p>
+          )}
+          {calWarn.length > 0 && (
+            <p className="ph-muted">
+              {calWarn.includes('unstable_background')
+                ? 'We heard sound while measuring the room.'
+                : calWarn.includes('high_noise') ? 'The room sounds noisy.' : 'The room sounds unsettled.'}
+              {' '}A quieter spot will give better results.{' '}
+              <button className="ph-btn ph-ghost" onClick={recalibrate}>Measure the room again</button>
+            </p>
+          )}
           <h2>Pick a sound</h2>
           <p className="ph-muted">Make any sound to see the circle move.</p>
           <div className="ph-grid">
@@ -208,6 +301,8 @@ export default function PhonationGame({ profile = 'child', levels = STARTER_LEVE
           {debug && <p className="ph-muted" ref={dbg} />}
         </section>
       )}
+
+      {stage === 'finishing' && <section className="ph-center"><h2>Nice!</h2></section>}
 
       {stage === 'result' && result && (
         <section className="ph-center">

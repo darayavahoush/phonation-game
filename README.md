@@ -1,6 +1,6 @@
 # Phonation module: typed levels with acoustic biofeedback
 
-A browser-side module for phonation games. Each level has a **type**; the type decides what is measured, what the child sees live, and how the trial is scored. Only derived features leave the module: **no raw audio is stored or transmitted**.
+A browser-side module for phonation games. Each level has a **type**; the type decides what is measured, what the child sees live, and how the trial is scored. By default only derived features exist: **no raw audio is kept, stored or transmitted**. The optional on-device recognition path (below) is opt-in per trial and holds audio in memory only until the trial is scored.
 
 ```
 mic ─► PhonationEngine ─► PhonationAnalyzer ─► live biofeedback state (≈100 Hz)
@@ -8,7 +8,7 @@ mic ─► PhonationEngine ─► PhonationAnalyzer ─► live biofeedback stat
                             (16 kHz, 5 ms hop)
 ```
 
-`PhonationAnalyzer` and everything under it are DOM-free and unit-tested in Node (`node --test __tests__/phonation.test.js`).
+`PhonationAnalyzer` and everything under it are DOM-free and unit-tested in Node (`npm test`).
 
 ## Level types
 
@@ -40,7 +40,9 @@ Targets are **clinician-adjustable parameters, not norms**. `STARTER_LEVELS` is 
 
 - Echo cancellation, noise suppression and AGC are requested **off**. If the browser ignores that, trials carry `capture_processing` and `quality.reliable = false`.
 - Start from a user gesture (iOS/Chrome suspend audio otherwise).
+- The worklet loads from an in-memory Blob URL (bundlers inline small worklet files as `data:` URLs, which `addModule()` does not reliably accept). If your CSP blocks blob workers, pass `workletUrl` (a real served copy of `phonation-worklet.js`); the engine also falls back to ScriptProcessor if the worklet cannot load.
 - Use a headset or external mic at a consistent distance where possible; laptop mics at variable distance make intensity measures unreliable.
+- `clipping` means flat-topped samples: runs of consecutive samples at full scale (about 0.08 ms or longer), at least 0.1 % of the trial. A loud voice whose peaks only touch full scale is not flagged. `quality.peakAbs` (0..1) and `quality.clipFraction` are reported next to the flag. The run length and fraction are placeholders: not yet validated on real devices.
 - Quality flags: `not_calibrated`, `high_noise` (room above −45 dBFS), `clipping`, `capture_processing`, `low_snr` (< 15 dB), `no_voicing`. **Show `quality.reliable` to the clinician next to every metric.**
 
 ## Validation status (be honest about this with clinicians)
@@ -86,6 +88,55 @@ Calling `endTrial()`: end it when `live.trialElapsedSec >= level.maxDurationSec`
 - `voiced` bridges <60 ms dropouts so the visual doesn't flicker on natural micro-pauses.
 - `stars` are gamification only; therapists should read `metrics` and `quality`.
 
+## Optional: on-device recognition (EXPERIMENTAL)
+
+A second, separate path for phoneme-level evidence. It **never** changes `passed`, `stars` or any acoustic metric, and it is attached to the result as `result.recognition` with `experimental: true`.
+
+```js
+import * as transformers from '@huggingface/transformers';           // the app installs this, the module doesn't depend on it
+import { TransformersPhonemeRecognizer } from './phonation';
+
+const recognizer = new TransformersPhonemeRecognizer({
+  transformers,
+  modelId: '<a phoneme-CTC model with ONNX weights>',                // no default on purpose, see "Choosing a model"
+  // vocab: {...vocab.json...},                                      // pass this if the model's tokenizer can't be loaded
+  // preprocess: async (audio16k) => audio16k,                       // optional hook, e.g. a neural denoiser
+});
+recognizer.ready();                                                  // warm up in the background
+
+engine.beginTrial(level, { captureAudio: true });                    // audio kept IN MEMORY for this trial only
+const result = await engine.endTrialAndRecognize(recognizer);        // audio is dropped before this returns
+// result.recognition = { experimental, heard: ['b','ɑ'], consonant: { verdict, llr, bestCompetitor }, vowel: {...}, caveats }
+```
+
+How it works: the model's CTC posteriors are scored for isolated syllables (`cv_syllable`, `syllable_train`) as a GOP-style log-posterior ratio between the target phone and the best competing phone. There is no forced alignment, so it is only meaningful for short isolated syllables. If the model vocabulary has no label for the target phone, the result is `ok: false, reason: 'target_labels_not_in_vocab'` instead of a made-up score.
+
+**Privacy change when enabled:** audio is buffered (16 kHz, in memory, capped at `maxDurationSec + 2` s) so the model can run on this device. It is never persisted or sent anywhere by this module. Say so in your consent text (the UI does when a `recognizer` prop is given). Silence/no-voicing trials skip the model entirely, because recognizers hallucinate on silence.
+
+### Choosing a model (read before enabling)
+
+- Character-level ASR models (for example `wav2vec2-base-960h`) output letters, not phonemes. You need a **phoneme** CTC model.
+- Large models are heavy for children's tablets. One community ONNX phoneme model found while preparing this (`robg/speako-phoneme-recognizer`, a TIMIT-derived 39-symbol inventory) has a quantized file of roughly 355 MB; it has not been evaluated here. Measure download size, load time and latency on your target devices first.
+- Models trained on adult read speech (TIMIT and similar) are likely to score young or atypical voices unfairly.
+- Some phoneme models ship only a slow CTC tokenizer that Transformers.js cannot load; pass `vocab` yourself.
+
+### Evaluate before trusting any output
+
+1. Record a small set with parental consent: typical children and, with clinician involvement, children with known articulation differences. Keep recordings off the repo.
+2. Have an SLP label each token (correct / substitution / distortion / omission).
+3. Compare `consonant.verdict` against the labels. Report agreement per phone and per age band, including false "competitor_dominant" rates on typical speech.
+4. Only then decide whether the output may be shown to clinicians, and under what wording. The thresholds in `recognition/posteriors.js` (`LLR_MARGIN`, `WEAK_PEAK`) are placeholders.
+
+## Optional: de-identified session summary for drafted notes
+
+`summarizeForReport(results, { ageBand })` builds a whitelist-only aggregate (no names, player codes, emails, timestamps, experimental metrics or recognizer output). `buildDraftPrompt(summary)` wraps it in instructions that require clinician review and forbid diagnosis. **This module makes no network calls.** Whether to send that text to any hosted model is the app's decision (check your consent and data-protection obligations first), and the generated text is a draft, never a clinical record.
+
+## Considered but not included
+
+- **Neural denoising (RNNoise / DeepFilterNet):** only as the `preprocess` hook on the recognizer's audio. It must never sit in front of the acoustic metrics, because it changes level, onsets and voicing. No implementation is shipped.
+- **Whisper-class ASR:** the current levels are syllables and sounds, where it tends to hallucinate. Revisit when word-level levels exist.
+- **Neural TTS, webcam lip tracking:** out of scope here. If lip tracking is added, keep it on-device; do not send a child's video to a hosted API.
+
 ## Files
 
-`dsp.js` (YIN, FFT, decimator, stats) · `FeatureExtractor.js` (frames) · `analysis.js` (segments, nuclei, onset/VOT) · `scoring.js` (per-type scorers, quality) · `levelSchema.js` (typed levels, validation) · `PhonationAnalyzer.js` (calibration, live state, trials) · `PhonationEngine.js` + `phonation-worklet.js` (browser mic) · `levels.js` (starter curriculum) · `types.d.ts` · `__tests__/`
+`dsp.js` (YIN, FFT, decimator, stats) · `FeatureExtractor.js` (frames) · `analysis.js` (segments, nuclei, onset/VOT) · `scoring.js` (per-type scorers, quality) · `levelSchema.js` (typed levels, validation) · `PhonationAnalyzer.js` (calibration, live state, trials) · `PhonationEngine.js` + `phonation-worklet.js` (browser mic) · `levels.js` (starter curriculum) · `recognition/` (posterior scoring, recognizer adapters) · `report/` (de-identified summary) · `workletSource.js` (generated from `phonation-worklet.js`) · `ui/` · `types.d.ts` · `__tests__/`

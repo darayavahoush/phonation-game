@@ -95,7 +95,12 @@ export type QualityFlag =
 export interface Quality {
   noiseFloorDb: number | null;
   snrDb: number | null;
+  /** Samples inside flat-top runs at full scale (a loud voice that only touches the rail is not counted). */
   clippedSamples: number;
+  /** clippedSamples / samples in the trial; null when the trial had no audio. */
+  clipFraction: number | null;
+  /** Largest absolute sample in the trial, about 0..1 (resampling can overshoot 1 by a hair). Useful to show how close to the limit a recording was. */
+  peakAbs: number | null;
   captureProcessing: Record<string, unknown>;
   flags: QualityFlag[];
   /** false if any flag undermines intensity/onset measures; show to the clinician. */
@@ -124,6 +129,24 @@ export interface TrialResult {
   events: Array<Record<string, number | string | boolean | null>>;
   contour?: ContourPoint[];
   quality: Quality;
+  /** Present only when a recognizer was used. Experimental: never affects passed or stars. */
+  recognition?: Recognition;
+}
+
+export interface Recognition {
+  experimental: true;
+  ok: boolean;
+  recognizer?: string;
+  reason?: string;
+  error?: string;
+  heard?: string[];
+  [key: string]: unknown;
+}
+
+export interface Recognizer {
+  name: string;
+  ready(): Promise<unknown>;
+  recognize(audio: Float32Array, sampleRate: number, ctx: { level?: Level }): Promise<Recognition | null>;
 }
 
 export interface CalibrationResult {
@@ -138,13 +161,17 @@ export class PhonationEngine {
     profile?: Profile;
     onLive?: (s: LiveState) => void;
     onError?: (e: Error) => void;
+    /** URL of phonation-worklet.js served as a real file. Default: an in-memory Blob URL. */
+    workletUrl?: string | null;
   });
   readonly live: LiveState | null;
   readonly calibrated: boolean;
   start(): Promise<Record<string, unknown>>;
   calibrate(ms?: number): Promise<CalibrationResult>;
-  beginTrial(level: Level): Level;
+  beginTrial(level: Level, opts?: { captureAudio?: boolean }): Level;
   endTrial(): TrialResult;
+  /** Needs beginTrial(level, { captureAudio: true }). Audio is dropped before this returns. */
+  endTrialAndRecognize(recognizer: Recognizer): Promise<TrialResult>;
   cancelTrial(): void;
   stop(): void;
 }

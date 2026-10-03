@@ -13,6 +13,10 @@ export const GATE_MARGIN_DB = 8; // voiced frames must exceed noise floor by thi
 export const MIN_GATE_DB = -70; // absolute floor for the gate (dBFS)
 const YIN_THRESHOLD = 0.2;
 const CLIP_LEVEL = 0.98;
+// Real clipping is a FLAT TOP: several consecutive samples stuck at the rail. A loud but undistorted voice
+// only touches the rail for 1-2 samples per cycle, so single samples are not counted. 0.08 ms (4 samples at
+// 48 kHz) is a placeholder: not yet validated against real devices.
+export const CLIP_RUN_SEC = 0.00008;
 
 /**
  * Turns a stream of mono PCM blocks into 5 ms-hop acoustic frames:
@@ -73,7 +77,13 @@ export class FeatureExtractor {
     this.dcY = 0;
 
     this.rawCount = 0;
-    this.clippedSamples = 0;
+    this.clipRunSamples = Math.max(3, Math.ceil(sampleRate * CLIP_RUN_SEC));
+    this._clipRunLen = 0;
+    this.clippedSamples = 0; // samples that belong to a flat-top run (see CLIP_RUN_SEC)
+    this.clipRuns = 0; // number of such runs
+    this.lastClipSec = null; // stream time of the most recent clipped sample
+    this.lastPeak = 0; // largest |sample| in the latest block (0..1)
+    this.lastBlock = null; // latest decimated, DC-blocked block (used only for opt-in on-device recognition)
   }
 
   /** Seconds of audio received so far. */
@@ -88,7 +98,24 @@ export class FeatureExtractor {
 
   /** @param {Float32Array} block mono samples in [-1, 1] @returns {object[]} new frames */
   push(block) {
-    for (let i = 0; i < block.length; i++) if (Math.abs(block[i]) >= CLIP_LEVEL) this.clippedSamples++;
+    let peak = 0;
+    for (let i = 0; i < block.length; i++) {
+      const a = Math.abs(block[i]);
+      if (a > peak) peak = a;
+      if (a >= CLIP_LEVEL) {
+        this._clipRunLen++;
+        if (this._clipRunLen === this.clipRunSamples) {
+          this.clippedSamples += this.clipRunSamples;
+          this.clipRuns++;
+        } else if (this._clipRunLen > this.clipRunSamples) {
+          this.clippedSamples++;
+        }
+        if (this._clipRunLen >= this.clipRunSamples) this.lastClipSec = (this.rawCount + i) / this.sampleRate;
+      } else {
+        this._clipRunLen = 0;
+      }
+    }
+    this.lastPeak = peak;
     this.rawCount += block.length;
 
     const x = this.dec.process(block);
@@ -100,6 +127,7 @@ export class FeatureExtractor {
       y[i] = out;
     }
     this._append(y);
+    this.lastBlock = y;
 
     const frames = [];
     while (this.nextC + this.half < this.base + this.len) {

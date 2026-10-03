@@ -1,4 +1,5 @@
 import { PhonationAnalyzer } from './PhonationAnalyzer.js';
+import { WORKLET_SOURCE } from './workletSource.js';
 
 /**
  * Microphone I/O around PhonationAnalyzer.
@@ -21,7 +22,13 @@ import { PhonationAnalyzer } from './PhonationAnalyzer.js';
  * requestAnimationFrame rather than calling setState on every callback.
  */
 export class PhonationEngine {
-  constructor({ profile = 'child', onLive = null, onError = null } = {}) {
+  /**
+   * @param {{profile?: 'child'|'adult', onLive?: Function, onError?: Function, workletUrl?: string}} opts
+   *        workletUrl: optional URL of phonation-worklet.js served as a real file. By default the worklet is
+   *        loaded from an in-memory Blob URL (needs no bundler config; strict CSPs may need `worker-src blob:`).
+   */
+  constructor({ profile = 'child', onLive = null, onError = null, workletUrl = null } = {}) {
+    this.workletUrl = workletUrl;
     this.profile = profile;
     this.onLive = onLive;
     this.onError = onError;
@@ -82,16 +89,26 @@ export class PhonationEngine {
       if (this.onLive) this.onLive(live);
     };
 
+    let workletOk = false;
     if (this.ctx.audioWorklet) {
-      await this.ctx.audioWorklet.addModule(new URL('./phonation-worklet.js', import.meta.url));
-      this.node = new AudioWorkletNode(this.ctx, 'phonation-capture', {
-        numberOfInputs: 1,
-        numberOfOutputs: 1,
-        outputChannelCount: [1],
-      });
-      this.node.port.onmessage = (e) => handle(e.data);
-    } else {
-      // Fallback for old browsers (ScriptProcessorNode is deprecated but universal).
+      const url = this.workletUrl || URL.createObjectURL(new Blob([WORKLET_SOURCE], { type: 'text/javascript' }));
+      try {
+        await this.ctx.audioWorklet.addModule(url);
+        this.node = new AudioWorkletNode(this.ctx, 'phonation-capture', {
+          numberOfInputs: 1,
+          numberOfOutputs: 1,
+          outputChannelCount: [1],
+        });
+        this.node.port.onmessage = (e) => handle(e.data);
+        workletOk = true;
+      } catch (e) {
+        console.warn('AudioWorklet unavailable, falling back to ScriptProcessor:', e && e.message);
+      } finally {
+        if (!this.workletUrl) URL.revokeObjectURL(url);
+      }
+    }
+    if (!workletOk) {
+      // Fallback for old browsers / strict CSP (ScriptProcessorNode is deprecated but universal).
       this.node = this.ctx.createScriptProcessor(1024, 1, 1);
       this.node.onaudioprocess = (e) => handle(new Float32Array(e.inputBuffer.getChannelData(0)));
     }
@@ -115,14 +132,39 @@ export class PhonationEngine {
     return new Promise((resolve) => setTimeout(() => resolve(this.analyzer.finishCalibration()), ms));
   }
 
-  beginTrial(level) {
+  /**
+   * @param {object} level
+   * @param {{captureAudio?: boolean}} [opts] captureAudio keeps this trial's audio IN MEMORY so an
+   *        on-device recognizer can run after it. Default false. Audio is never stored or sent.
+   */
+  beginTrial(level, opts) {
     this._need();
-    return this.analyzer.beginTrial(level);
+    return this.analyzer.beginTrial(level, opts);
   }
 
   endTrial() {
     this._need();
     return this.analyzer.endTrial();
+  }
+
+  /**
+   * Ends a trial that was started with { captureAudio: true } and runs an on-device recognizer
+   * on its audio. The acoustic result (passed / stars / metrics) is identical to endTrial();
+   * recognizer output is attached as `result.recognition` and is always marked experimental.
+   * Recognizer failures never fail the trial: they become `{ experimental: true, ok: false, error }`.
+   * The audio buffer is dropped before this returns.
+   */
+  async endTrialAndRecognize(recognizer) {
+    this._need();
+    const { result, level, audio, sampleRate } = this.analyzer.endTrialWithAudio();
+    if (!recognizer || !audio || result.quality.flags.includes('no_voicing')) return result;
+    try {
+      const rec = await recognizer.recognize(audio, sampleRate, { level });
+      if (rec) result.recognition = rec;
+    } catch (e) {
+      result.recognition = { experimental: true, ok: false, recognizer: recognizer.name || 'unknown', error: String(e && e.message ? e.message : e) };
+    }
+    return result;
   }
 
   cancelTrial() {

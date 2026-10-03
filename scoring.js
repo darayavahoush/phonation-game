@@ -12,7 +12,8 @@ export const VOICING_LAG_MS = 10;
 
 export const QUALITY = Object.freeze({
   HIGH_NOISE_DB: -45, // calibrated room noise above this (dBFS) is flagged
-  CLIP_SAMPLES: 10, // this many clipped samples in a trial is flagged
+  CLIP_SAMPLES: 10, // minimum flat-top samples before a trial can be flagged
+  CLIP_FRACTION: 0.001, // ...and they must be at least this share of the trial's samples (placeholder, not validated on real devices)
 });
 
 const BRIDGE_SEC = 0.06; // unvoiced gaps shorter than this don't end a voiced segment
@@ -231,7 +232,9 @@ function qualityOf(trial, voicedFrames) {
   const { noise, calibrated, captureInfo = {} } = trial;
   if (!calibrated) flags.push('not_calibrated');
   if (noise.db > QUALITY.HIGH_NOISE_DB) flags.push('high_noise');
-  if (trial.clippedSamples >= QUALITY.CLIP_SAMPLES) flags.push('clipping');
+  const total = trial.totalSamples || 0;
+  const clipLimit = Math.max(QUALITY.CLIP_SAMPLES, QUALITY.CLIP_FRACTION * total);
+  if (trial.clippedSamples >= clipLimit) flags.push('clipping');
   if (captureInfo.autoGainControl || captureInfo.noiseSuppression || captureInfo.echoCancellation) flags.push('capture_processing');
   if (voicedFrames === 0) flags.push('no_voicing');
 
@@ -244,6 +247,8 @@ function qualityOf(trial, voicedFrames) {
     noiseFloorDb: round(noise.db, 1),
     snrDb: round(snrDb, 1),
     clippedSamples: trial.clippedSamples,
+    clipFraction: total ? round(trial.clippedSamples / total, 4) : null,
+    peakAbs: trial.peakAbs != null ? round(trial.peakAbs, 3) : null,
     captureProcessing: { ...captureInfo },
     flags,
     reliable: !flags.some((f) => unreliable.includes(f)),
