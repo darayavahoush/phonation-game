@@ -31,12 +31,48 @@ and whether anything changed result under noise while still marked reliable.
 
 ## Which data answers which question
 
-| Question | Data | Notes |
+Access terms below were read from the sources on 2026-10-03. Re-check before you rely on them, and cite every dataset you use.
+
+| Question | Data | Access and notes |
 |---|---|---|
-| Does F0 / voicing hold up on disordered adult voices? | Saarbrücken Voice Database | >2000 German speakers, healthy and 71 pathologies; /i a u/ at normal, high, low and rising-falling pitch; clips of 1-3 s at 50 kHz. Free to download. Good for F0 and glide direction. Too short for MPT; adults only. |
-| Does syllable/voicing detection survive atypical speech? | Speech Accessibility Project | Adults with Parkinson's, ALS, cerebral palsy, Down syndrome, stroke; ~1,090 h. Needs a signed data use agreement plus a one-page proposal; no redistribution; it is aimed at speech-recognition work, so frame your proposal honestly. I have not checked whether it contains repetition (DDK) tasks. |
-| Does it work for the children you built it for, on their devices? | Your own small consented set | Public labelled *clinical child* recordings are scarce, and I have not verified the access terms of PhonBank/TalkBank. 30-60 recordings with a speech-language pathologist counting syllables by hand is more decisive than any adult database. Record on the real tablets/phones. |
-| Does the quality gate catch bad rooms? | Any set above + `--snr` sweep | Mixes synthetic white noise. Real rooms (fans, babble, TV) are harder, so also record a few in genuinely noisy places. |
+| Does F0 / voicing hold up on disordered adult voices? | **Saarbrücken Voice Database** (Zenodo 10.5281/zenodo.16874898) | CC-BY 4.0, free. German adults, healthy plus ~70 diagnoses (incl. Parkinson's, ALS, dysarthria, stuttering, Down syndrome, orofacial dyspraxia). Vowels /i a u/ at normal/high/low/rising-falling pitch, 1-3 s, 50 kHz. Files are `.nsp`; convert with ffmpeg (see below). Good for F0, glide, voicing on rough/breathy voices. No labelled counts, too short for MPT, adults only. |
+| Does syllable counting survive atypical speech? | **NeuroVoz** (Zenodo 10.5281/zenodo.10777657) | Castilian-Spanish Parkinson's + controls, ~108 speakers. Sustained vowels (x3), ~10 s /pa-ta-ka/ DDK, GRBAS voice ratings. Public, but check the Zenodo record's licence yourself (GitHub says MIT; the paper carries a different licence). Has no hand-counted syllables, so label a sample with `label.py`. |
+| Real *children's* voices, clinical setting | **UltraSuite** (UXTD typically developing, UXSSD + UPX speech sound disorders; ~86 children) | UK English child speech-therapy sessions with transcripts and phone/word boundaries. A small sample is on Edinburgh DataShare; the full set is requested via ultrax-speech.org (terms not verified by me). Good for voicing/noise-gate/F0 on real child recordings; not for DDK counts. |
+| More disordered-adult speech | Speech Accessibility Project | Adults (Parkinson's, ALS, CP, Down syndrome, stroke), ~1,090 h. Signed data use agreement + one-page proposal; no redistribution; framed around speech recognition. I have not checked whether it has repetition tasks. |
+| Does it work for *your* children, on *their* devices | Your own small consented set | 30-60 clips, hand-labelled by a speech-language pathologist, recorded on the real tablets. Public labelled child DDK data is scarce; this is the decisive set. |
+| Does the quality gate catch bad rooms? | Any set above + `--snr` | Synthetic white noise only. Add a few recordings from genuinely noisy places. |
+
+### Saarbrücken, step by step
+
+```bash
+brew install ffmpeg                      # once
+mkdir -p validation/data/svd && cd validation/data/svd
+# Start small. In a browser open https://zenodo.org/records/16874898 and download, for example:
+#   healthy.zip (6 GB; or skip at first), Morbus Parkinson.zip (5.5 MB), Amyotrophe Lateralsklerose.zip (14 MB),
+#   Dysarthrophonie.zip (144 MB), Morbus Down.zip (9 MB), Orofaciale Dyspraxie.zip (9.7 MB)
+# unzip each into its OWN folder named after the zip:
+for z in ~/Downloads/*.zip; do d="$(basename "$z" .zip)"; mkdir -p "$d" && unzip -qo "$z" -d "$d"; done
+cd ../../..
+curl -LO https://raw.githubusercontent.com/UMEssen/stimmdatenbank-converter/main/convert_nsp_to_wav.py
+python3 convert_nsp_to_wav.py validation/data/svd && rm convert_nsp_to_wav.py     # writes .wav next to each .nsp
+python3 validation/make_manifest.py --preset svd --root validation/data/svd --out validation/manifest-svd.json --limit-per-group 20
+node validation/run-engine.mjs validation/manifest-svd.json --out validation/out/svd.jsonl
+python3 validation/compare.py validation/manifest-svd.json validation/out/svd.jsonl
+```
+
+Read section 5 of the report first: per diagnosis, how often the engine finds no voice, how often it calls the recording
+unreliable, and how far its F0 is from Praat. Then listen to the ten largest disagreements.
+
+Things to expect, so you do not misread the result:
+- The builder uses the adult profile (F0 70-450 Hz). Female *high-pitch* vowels can exceed 450 Hz; that is out of range by design, not a bug. Re-run with `--profile child` (130-700 Hz) to see the difference.
+- These clips may have almost no silence, so calibration uses the clip's own quietest windows (`calibQuietest`). If a clip is voiced from the first sample, the noise floor is overestimated and the engine may report `no_voicing`; that is a limit of the data.
+- "Pathological" is a diagnosis, not a score. This tests whether the *measurement* survives rough, breathy or unsteady voices, not whether the engine detects disease.
+
+### Labelling a sample by ear
+
+```bash
+python3 validation/label.py validation/manifest-neurovoz.json --field count --sample 20 --units-per 3   # you count pa-ta-ka triplets
+```
 
 ## What "tuning" means for this engine
 

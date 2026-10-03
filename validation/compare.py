@@ -32,8 +32,8 @@ def praat_ref(e, r):
     import parselmouth
     from parselmouth.praat import call
     snd = parselmouth.Sound(os.path.join(base, e["file"]))
-    calib = e.get("calibSec", 0 if e.get("noiseFile") else 0.8)
-    if not e.get("noiseFile") and calib: snd = snd.extract_part(from_time=calib, preserve_times=False)
+    calib = e.get("calibSec", 0 if (e.get("noiseFile") or e.get("calibQuietest")) else 0.8)
+    if not (e.get("noiseFile") or e.get("calibQuietest")) and calib: snd = snd.extract_part(from_time=calib, preserve_times=False)
     lo, hi = PROFILE_F0[e.get("profile", "child")]
     pit = snd.to_pitch_ac(time_step=0.005, pitch_floor=lo, pitch_ceiling=hi, very_accurate=False)
     f0 = pit.selected_array["frequency"]; voiced = f0 > 0
@@ -161,3 +161,28 @@ if a.tune:
             tr = np.setdiff1d(idx, f); th, _ = best(v[tr], t[tr]); ok += ((v[f] >= th) == t[f]).sum()
         print(f"  cross-validated accuracy: {100*ok/len(v):.0f}%   (compare with {100*max(t.mean(), 1-t.mean()):.0f}% from always guessing the majority)")
         print("  Tip: tune per population (e.g. child vs adult) and never on the recordings you will report results on.")
+
+# ---------------------------------------------------------------- 5. failure modes per group
+print("\n== 5. Failure modes per group (use this on disordered-voice sets) ==")
+def cents(a_, b_): return 1200 * math.log2(a_ / b_)
+bygrp = {}
+for e, r in rows: bygrp.setdefault(e.get("group") or "all", []).append((e, r))
+worst = []
+print(f"  {'group':<34}{'n':>4} {'no_voicing':>11} {'unreliable':>11} {'F0 median |err|':>16} {'octave errs':>12}")
+for g, items in sorted(bygrp.items()):
+    nv = sum("no_voicing" in r["result"]["quality"]["flags"] for e, r in items)
+    ur = sum(not r["result"]["quality"]["reliable"] for e, r in items)
+    errs, octv, cmp_n = [], 0, 0
+    for e, r in items:
+        pe = praat.get(e["id"], {}).get("f0MeanHz"); en = metric(r, "f0MeanHz")
+        if pe and en:
+            c = cents(en, pe); errs.append(abs(c)); cmp_n += 1
+            if abs(abs(c) - 1200) < 250: octv += 1
+            worst.append((abs(c), e["id"], g, en, pe))
+    med = f"{np.median(errs):.0f} cents" if errs else "n/a"
+    print(f"  {g[:33]:<34}{len(items):>4} {100*nv/len(items):>10.0f}% {100*ur/len(items):>10.0f}% {med:>16} {octv:>7}/{cmp_n}")
+if worst:
+    worst.sort(reverse=True)
+    print("  largest engine-vs-Praat F0 disagreements (LISTEN to these; either tool may be the wrong one):")
+    for c, i, g, en, pe in worst[:10]: print(f"    {i:<36} {g[:22]:<22} engine {en:7.1f} Hz  praat {pe:7.1f} Hz  ({c:.0f} cents)")
+    print("  100 cents = 1 semitone. Praat is a second opinion, not the truth: a recording where they disagree is a recording to check by ear.")

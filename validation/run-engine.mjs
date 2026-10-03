@@ -11,6 +11,7 @@
 //     "level": { "id": "mpt", "type": "sustained_voicing", "targetDurationSec": 5 },
 //     "calibSec": 0.8,                          // use the first N s of the file as the "stay quiet" calibration (0 = skip)
 //     "noiseFile": "data/room.wav",             // OR a separate noise-only clip for calibration
+//     "calibQuietest": true,                    // OR no silence available: calibrate on the clip's own quietest 5% (see quietestNoise)
 //     "truth": { "passed": true, "count": 5, "mptSec": 6.2 } }   // whatever labels you have
 import fs from 'node:fs';
 import path from 'node:path';
@@ -43,6 +44,20 @@ function addNoise(x, rms, rand) {
   return y;
 }
 
+/** For clips with no silent lead-in: build a stand-in "stay quiet" clip at the level of the recording's own
+ *  quietest 20 ms windows (5th percentile). ASSUMPTION: the clip contains at least a little silence. If it does not
+ *  (continuous voice from the first sample) the floor is overestimated and the engine will under-detect: that is
+ *  a limit of the data, and `calib.source` records that this shortcut was used. */
+function quietestNoise(x, fs, rand) {
+  const w = Math.max(1, Math.round(0.02 * fs)), r = [];
+  for (let i = 0; i + w <= x.length; i += w) { let s = 0; for (let j = 0; j < w; j++) s += x[i + j] ** 2; r.push(Math.sqrt(s / w)); }
+  r.sort((a, b) => a - b);
+  const rms = Math.max(r[Math.floor(r.length * 0.05)] || 0, 10 ** (-90 / 20));
+  const out = new Float32Array(Math.round(1.0 * fs)), a = rms * Math.sqrt(3);
+  for (let i = 0; i < out.length; i++) out[i] = (rand() * 2 - 1) * a;
+  return out;
+}
+
 function feed(an, x) { for (let i = 0; i < x.length; i += BLOCK) an.push(x.subarray(i, Math.min(i + BLOCK, x.length))); }
 
 function runOne(e, base) {
@@ -56,6 +71,7 @@ function runOne(e, base) {
     x = addNoise(x, rms, rand);
     if (noiseClip) noiseClip = addNoise(noiseClip, rms, rand);
   }
+  if (!noiseClip && e.calibQuietest) noiseClip = quietestNoise(x, fs_, rng(seed + 17));
   const calibSec = e.calibSec ?? (noiseClip ? 0 : 0.8);
   const an = new PhonationAnalyzer({ sampleRate: fs_, profile: e.profile ?? 'child' });
   // Offline files: we cannot know whether AGC/NS were on. Declare them off; record that this was an assumption.
@@ -64,7 +80,7 @@ function runOne(e, base) {
   let calib = { ok: null, warnings: ['skipped'], source: 'none' }, trialStart = 0;
   if (noiseClip || calibSec > 0) {
     an.startCalibration();
-    if (noiseClip) { feed(an, noiseClip); trialStart = 0; calib.source = 'noiseFile'; }
+    if (noiseClip) { feed(an, noiseClip); trialStart = 0; calib.source = e.calibQuietest ? 'quietest-window' : 'noiseFile'; }
     else { const n = Math.round(calibSec * fs_); feed(an, x.subarray(0, n)); trialStart = n; calib.source = 'lead-in'; }
     const c = an.finishCalibration();
     calib = { ok: c.ok, warnings: c.warnings, noiseDb: c.noise?.db ?? null, transientFraction: c.transientFraction ?? null, source: calib.source };
