@@ -203,3 +203,11 @@
 .st-bubblebar { display: flex; align-items: center; gap: 1rem; justify-content: flex-end; } .st-bubblebar span { margin-right: auto; color: #8a7a9a; font-weight: 700; } .st-bubble .st-link { color: #5b3fa0; }
 .st-from { margin: 0; color: var(--lamp); font-weight: 800; } .st-playstory { margin: 0 !important; color: var(--lamp) !important; font: 700 1.15rem var(--display); }
 .st-outro { max-width: 36rem; font-style: italic; }
+
+/* ---- v6: scrolling Candy-Crush-style map ---- */
+.st-mapscroll { max-height: min(78vh, 820px); overflow-y: auto; overscroll-behavior: contain; border-radius: 28px; box-shadow: 0 14px 40px rgba(0,0,0,.5); border: 4px solid #8a5a2b; -webkit-overflow-scrolling: touch; }
+.st-map { max-width: 640px; margin-inline: auto !important; width: 100%; }
+.st-map svg { filter: none; border-radius: 0; }
+.st-map figcaption b { color: #c9a8ff; }
+.st-node.open:hover > circle:nth-of-type(3), .st-node.open:focus-visible > circle:nth-of-type(3) { stroke: #fff; }
+.st-node.open { transition: transform .15s; } .st-node.open:active { opacity: .85; }

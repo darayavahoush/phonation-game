@@ -69,7 +69,8 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
   const [toast, setToast] = useState(null)
   const [plays, setPlays] = useState(0)
   const [scene, setScene] = useState(null)
-  const [arc, setArc] = useState(0) // how far the saga has got this session (nothing is stored)
+  const [prog, setProg] = useState(0) // chapters finished this session (nothing is stored)
+  const [starsWon, setStarsWon] = useState([])
   const avatar = AVATARS.find((a) => a.id === avatarId) || AVATARS[0]
   const worldId = run ? run.quest.world : Object.keys(WORLDS)[plays % Object.keys(WORLDS).length]
   const world = WORLDS[worldId]
@@ -121,13 +122,16 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
     setRun({ quest, i, twisted }); setLevel(l); setLabel(`Chapter ${QUESTS.indexOf(quest) * 5 + i + 1} of ${QUESTS.length * 5}`); setResult(null); setNotice(null); setCount(null)
     setScene({ lines }); setStage('scene')
   }
+  const startFromMap = (k) => { const q = QUESTS[Math.floor(k / 5)], c = k % 5; startChapter(q, c, !!q.chapters[c].twist) }
   const startFree = () => { const l = makeLevel(sound, mode); if (l) choose(l, `“${cleanSound(sound)}”`) }
   const afterPass = () => { // surprise gift on about every other pass
     if (Math.random() < 0.55) { const g = SURPRISES[Math.floor(Math.random() * SURPRISES.length)]; setOutfit(g.gift); setToast(g); setTimeout(() => setToast(null), 3800) }
   }
   const nextChapter = () => {
     const { quest, i } = run
-    if (i + 1 >= quest.chapters.length) { setPrizes((p) => (p.includes(quest.prize.icon) ? p : [...p, quest.prize.icon])); setArc((a) => Math.max(a, QUESTS.indexOf(quest) + 1)); setStage('finale'); return }
+    const idx = QUESTS.indexOf(quest) * 5 + i
+    setProg((p) => Math.max(p, idx + 1)); setStarsWon((a) => { const c = [...a]; c[idx] = Math.max(c[idx] || 0, result?.stars || 1); return c })
+    if (i + 1 >= quest.chapters.length) { setPrizes((p) => (p.includes(quest.prize.icon) ? p : [...p, quest.prize.icon])); setStage('finale'); return }
     const nx = quest.chapters[i + 1]; startChapter(quest, i + 1, !!nx.twist)
   }
 
@@ -273,8 +277,8 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
             {prizes.length > 0 && <span className="st-prizes" aria-label="Prizes won">{prizes.join(' ')}</span>}
           </nav>
 
-          {tab === 'quests' && arc < QUESTS.length && <div className="st-continue"><button className="st-btn big" onClick={() => startChapter(QUESTS[arc], 0)}>{arc ? 'Continue the saga' : 'Begin the saga'} · realm {arc + 1} of {QUESTS.length}</button></div>}
-          {tab === 'quests' && <WorldMap quests={QUESTS} arc={arc} openAll={set.openAll} avatar={avatar} reduced={reduced} onGo={(i) => startChapter(QUESTS[i], 0)} />}
+          {tab === 'quests' && prog < QUESTS.length * 5 && <div className="st-continue"><button className="st-btn big" onClick={() => startFromMap(prog)}>{prog ? 'Continue the saga' : 'Begin the saga'} · chapter {prog + 1} of {QUESTS.length * 5}</button></div>}
+          {tab === 'quests' && <WorldMap quests={QUESTS} prog={prog} stars={starsWon} openAll={set.openAll} avatar={avatar} reduced={reduced} onGo={startFromMap} />}
 
           {tab === 'sounds' && <section className="st-sounds">
             <h2>Pick a sound, or type your own</h2>
