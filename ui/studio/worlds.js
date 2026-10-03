@@ -140,3 +140,27 @@ export const SURPRISES = [
   { icon: '🦋', text: 'A butterfly landed on your friend’s head!', gift: '🦋' },
   { icon: '🌟', text: 'A shooting star granted you a sparkly wish!', gift: '🌟' },
 ]
+
+// ---------- Immersion: reactions and realm openings/endings ----------
+const CHEER = {
+  skarn: ['*puffs a happy sparkle* Hrrm! My scales tingle!', 'Ha! That shook the mountain, in the nicest way!'], gnorb: ['Hee hee! I wasn’t expecting that. Brilliant!', 'You’re better at this than my whole gnome gang!'],
+  brine: ['Shiver me tentacles! Splendid!', 'Eight arms up for YOU!'], oona: ['Mmm, a lovely note. The whole ocean heard.', 'The waves are dancing for you.'],
+  twink: ['I’m glowing again! Thank you!', 'Twinkle twinkle, that was great!'], pip: ['Baaa-rilliant!', 'Woolly wonderful!'],
+  zeph: ['Magnificent. The sky itself is applauding.', 'The castle bells are ringing for you.'], hoot: ['Hoo-ray! Pure wisdom in a voice!', 'Hoo hoo! Even I couldn’t do it better.'],
+  bram: ['Grrreat! That was a bear hug of a sound!', 'I’m not crying, my honey just got salty.'], echo: ['…ou did it… ou did it… did it!', 'Again again again! That was amazing!'],
+  clank: ['BEEP BOOP. Cheer circuits at 100%.', 'MAGNIFICENT. Recording this forever.'], mira: ['Oooh, the mirrors are sparkling!', 'I saw your voice shine in every crystal.'],
+  zed: ['…slowly…beautifully done.', 'Time itself paused to listen.'], grum: ['I… I felt something warm. Is that what listening is?', 'Do that again. Please?'], narr: ['And just like that, the fog backed away a little.', 'The kingdom grew a little brighter.'],
+}
+Object.keys(CAST).forEach((k) => { CAST[k].cheer = CHEER[k] })
+export const REALM_STORY = [
+  { intro: ['Long ago the kingdom sang all day. Then a grey fog rolled in and swallowed every sound.', 'Only one voice was left: yours. Far away, smoke rises from Dragon Mountain…'], outro: 'Skarn’s roar rumbles back. He gives you a glowing scale and whispers: “The fog comes from a fortress. Find the others.”' },
+  { intro: ['You slide down to the Starlit Sea. A tiny glow flickers deep in the water.'], outro: 'Twinkle zooms into the sky and draws a trail of light across the map toward the clouds.' },
+  { intro: ['Above the waves, the Cloud Kingdom floats. But its bridge has lost all its colour.'], outro: 'The bridge blazes with rainbow light. Queen Zephyra bows. “Our music was stolen by the Hush. Please, go on.”' },
+  { intro: ['Whisper Woods is quiet. Too quiet. Even the mushrooms look sad.'], outro: 'Gnorbert hangs his hat in shame, then grins: “Okay. I’m on YOUR team now.” The giggle echoes through the trees.' },
+  { intro: ['Deep in the Crystal Cave, something whispers your name back to you.'], outro: 'The crystals shine a map of a grey fortress. Mira points: “That’s where the fog begins.”' },
+  { intro: ['Bramble’s hollow log is empty. Crumbs lead away in a strange pattern.'], outro: 'You follow the fog-bees’ trail. They’re carrying honey… toward the fortress, as a gift for the Hush?' },
+  { intro: ['Sir Clank’s castle ticks and whirs, but the great clock has stopped.'], outro: 'The great clock chimes. Dawn is coming, and the fortress with it. Time to be brave.' },
+  { intro: ['You dive into the Sunken Library. Books drift like jellyfish.'], outro: 'Professor Hoot closes the book gently. “Perhaps we don’t need to fight it at all.” The friends look at you.' },
+  { intro: ['Dragon Mountain again, but now a wall of silence rises like a grey tower.'], outro: 'Grumblor shrinks from a giant to something small and sniffly. The wall of silence cracks open.' },
+  { intro: ['The last gathering. Every friend you met is here, waiting for you to begin.'], outro: 'Sound floods back into every corner of the kingdom. Grumblor laughs for the first time. You are the Voice Hero. 👑' },
+]

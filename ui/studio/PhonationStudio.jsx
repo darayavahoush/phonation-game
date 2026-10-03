@@ -5,7 +5,9 @@ import { adapt, TYPE_LABEL, levelList, levelTitle, levelPrompt, levelSay, levelG
 import VoiceStage from './VoiceStage.jsx'
 import Clinician from './Clinician.jsx'
 import Face from './Face.jsx'
-import { AVATARS, WORLDS, SOUNDS, MODES, QUESTS, CAST, SURPRISES, makeLevel, cleanSound, chapterLevel } from './worlds.js'
+import WorldMap from './WorldMap.jsx'
+import Scene from './Scene.jsx'
+import { REALM_STORY, AVATARS, WORLDS, SOUNDS, MODES, QUESTS, CAST, SURPRISES, makeLevel, cleanSound, chapterLevel } from './worlds.js'
 import './studio.css'
 
 const ICON = { sustained_voicing: '🕯️', cv_syllable: '✨', syllable_train: '🥁', pitch_glide: '🎢', loudness_ramp: '📣' }
@@ -66,11 +68,12 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
   const [prizes, setPrizes] = useState([])
   const [toast, setToast] = useState(null)
   const [plays, setPlays] = useState(0)
+  const [scene, setScene] = useState(null)
   const [arc, setArc] = useState(0) // how far the saga has got this session (nothing is stored)
   const avatar = AVATARS.find((a) => a.id === avatarId) || AVATARS[0]
   const worldId = run ? run.quest.world : Object.keys(WORLDS)[plays % Object.keys(WORLDS).length]
   const world = WORLDS[worldId]
-  const [set, setSet] = useState({ gain: 'normal', clinician: false, recog: false, denoise: false })
+  const [set, setSet] = useState({ gain: 'normal', clinician: false, recog: false, denoise: false, openAll: false })
   const reduced = useMemo(() => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches, [])
 
   useEffect(() => { window.scrollTo?.(0, 0) }, [stage]) // new screen starts at the top (phones keep the menu's scroll otherwise)
@@ -111,7 +114,12 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
   const startChapter = (quest, i, twisted = false) => {
     const ch = quest.chapters[i], l = chapterLevel(ch, twisted, quest, i)
     if (!l) return
-    setRun({ quest, i, twisted }); setLevel(l); setLabel(`Chapter ${QUESTS.indexOf(quest) * 5 + i + 1} of ${QUESTS.length * 5}`); setResult(null); setNotice(null); setCount(null); setStage('ready')
+    const lines = []
+    if (i === 0) (REALM_STORY[QUESTS.indexOf(quest)]?.intro || []).forEach((t) => lines.push({ who: 'narr', text: t }))
+    if (twisted && ch.twist) lines.push({ who: 'narr', tag: 'twist', text: ch.twist })
+    lines.push({ who: ch.who, text: ch.text })
+    setRun({ quest, i, twisted }); setLevel(l); setLabel(`Chapter ${QUESTS.indexOf(quest) * 5 + i + 1} of ${QUESTS.length * 5}`); setResult(null); setNotice(null); setCount(null)
+    setScene({ lines }); setStage('scene')
   }
   const startFree = () => { const l = makeLevel(sound, mode); if (l) choose(l, `“${cleanSound(sound)}”`) }
   const afterPass = () => { // surprise gift on about every other pass
@@ -199,6 +207,7 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
               <fieldset><legend>How strongly the lantern reacts</legend>
                 {Object.keys(GAIN).map((g) => <label key={g}><input type="radio" name="gain" checked={set.gain === g} onChange={() => setSet({ ...set, gain: g })} />{g[0].toUpperCase() + g.slice(1)}</label>)}
               </fieldset>
+              <label><input type="checkbox" checked={set.openAll} onChange={(e) => setSet({ ...set, openAll: e.target.checked })} />Open all realms on the map <small>(for grown-ups: skip the fog)</small></label>
               <label><input type="checkbox" checked={set.clinician} onChange={(e) => setSet({ ...set, clinician: e.target.checked })} />Clinician view <small>(display only, not access-controlled)</small></label>
               <label><input type="checkbox" checked={set.recog} onChange={(e) => setSet({ ...set, recog: e.target.checked })} />On-device sound check <small>(experimental; a short clip is held in memory until the try is scored)</small></label>
               {denoiser && <label className={set.recog ? '' : 'off'}><input type="checkbox" disabled={!set.recog} checked={set.denoise} onChange={(e) => setSet({ ...set, denoise: e.target.checked })} />Reduce room noise for the sound check only <small>(your loudness and pitch results always use the original sound)</small></label>}
@@ -242,8 +251,7 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
             <div className="st-bigico" aria-hidden="true">{ICON[level.type] ?? '🔆'}</div>
             {levelSay(level) && <div className="st-say" aria-hidden="true">{levelSay(level)}</div>}
             <h2>{label || levelTitle(level)}</h2>
-            {run?.twisted && run.quest.chapters[run.i].twist && <p className="st-twist">🌀 {run.quest.chapters[run.i].twist}</p>}
-            {run && (() => { const c = run.quest.chapters[run.i], w = CAST[c.who] || CAST.narr; return <div className="st-speak"><i aria-hidden="true">{w.icon}</i><div><b>{w.name}</b><p>{c.text}</p></div></div> })()}
+            {run && <p className="st-from">{(CAST[run.quest.chapters[run.i].who] || CAST.narr).icon} {(CAST[run.quest.chapters[run.i].who] || CAST.narr).name} is counting on you</p>}
             <p className="st-lead">{levelPrompt(level)}</p>
             <ol className="st-steps">{(HOWTO[level.type] || HOWTO.default).map((s, i) => <li key={i}><b>{i + 1}</b>{s}</li>)}</ol>
             {count === null
@@ -252,6 +260,8 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
           </div>
         </main>
       )}
+
+      {stage === 'scene' && scene && <Scene lines={scene.lines} cast={CAST} reduced={reduced} world={world} onSpeak={say} onDone={() => { setScene(null); setStage('ready') }} />}
 
       {stage === 'menu' && (
         <main className="st-menu">
@@ -264,11 +274,7 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
           </nav>
 
           {tab === 'quests' && arc < QUESTS.length && <div className="st-continue"><button className="st-btn big" onClick={() => startChapter(QUESTS[arc], 0)}>{arc ? 'Continue the saga' : 'Begin the saga'} · realm {arc + 1} of {QUESTS.length}</button></div>}
-          {tab === 'quests' && <div className="st-quests">{QUESTS.map((q) => (
-            <button key={q.id} className="st-quest" data-world={q.world} onClick={() => startChapter(q, 0, false)} style={{ background: `linear-gradient(145deg, ${WORLDS[q.world].sky[1]}, ${WORLDS[q.world].sky[2]})` }}>
-              <i aria-hidden="true">{q.icon}</i><strong>{q.title}</strong><span>{q.blurb}</span>
-              <em>{WORLDS[q.world].emoji} {WORLDS[q.world].name} · {q.chapters.length} chapters {prizes.includes(q.prize.icon) ? `· ${q.prize.icon} won!` : ''}</em>
-            </button>))}</div>}
+          {tab === 'quests' && <WorldMap quests={QUESTS} arc={arc} openAll={set.openAll} avatar={avatar} reduced={reduced} onGo={(i) => startChapter(QUESTS[i], 0)} />}
 
           {tab === 'sounds' && <section className="st-sounds">
             <h2>Pick a sound, or type your own</h2>
@@ -295,7 +301,8 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
           <div className="st-confetti" aria-hidden="true">{Array.from({ length: 24 }, (_, i) => <i key={i} style={{ left: `${(i * 4.3 + 2) % 100}%`, animationDelay: `${(i % 8) * 0.2}s`, background: ['#FF9B54', '#FFD08A', '#2FB8A6', '#60A5FA', '#F0604A'][i % 5] }} />)}</div>
           <div className="st-orb" aria-hidden="true"><Face /><span className="st-hat">{run.quest.prize.icon}</span></div>
           <h2>Quest complete!</h2>
-          <p className="st-lead">{run.quest.title}: you did it! You won the {run.quest.prize.name} {run.quest.prize.icon}</p>
+          <p className="st-lead st-outro">{REALM_STORY[QUESTS.indexOf(run.quest)]?.outro}</p>
+          <p className="st-lead">You won the {run.quest.prize.name} {run.quest.prize.icon}</p>
           <div className="st-actions">{QUESTS[QUESTS.indexOf(run.quest) + 1] ? <button className="st-btn big" onClick={() => startChapter(QUESTS[QUESTS.indexOf(run.quest) + 1], 0)}>Next realm →</button> : <p className="st-lead">🎉 The whole saga is complete. You saved the kingdom!</p>}<button className="st-btn ghost" onClick={() => { setRun(null); setStage('menu') }}>Back to the map</button></div>
         </main>
       )}
@@ -306,6 +313,7 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
           <div className="st-copy" aria-live="polite">
             {stage === 'play' && <>
               {levelSay(level) && <div className="st-say" aria-hidden="true">{levelSay(level)}</div>}
+              {run ? <p className="st-playstory">{(CAST[run.quest.chapters[run.i].who] || CAST.narr).icon} {run.quest.chapters[run.i].text}</p> : null}
               <h2>{levelPrompt(level)}</h2>
               <p className="st-coach">{heard ? (goal ? 'Keep going! You’re doing it! 🚂' : 'Nice! I can hear you! 🎉') : 'Take a breath… then say it!'}</p>
               {nudge && !heard && <p className="st-nudge">Try a little louder, or move closer to the mic 🎤</p>}
@@ -315,6 +323,7 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
             {stage === 'result' && result && <>
               {result.passed && result.quality?.reliable !== false && <div className="st-confetti" aria-hidden="true">{Array.from({ length: 16 }, (_, i) => <i key={i} style={{ left: `${(i * 6.3 + 3) % 100}%`, animationDelay: `${(i % 6) * 0.25}s`, background: ['#FF9B54', '#FFD08A', '#2FB8A6', '#60A5FA', '#F0604A'][i % 5] }} />)}</div>}
               {result.quality?.reliable !== false && <div className="st-stars" aria-label={`${result.stars ?? 0} of 3 stars`}>{[0, 1, 2].map((i) => <b key={i} className={i < (result.stars ?? 0) ? 'on' : ''}>★</b>)}</div>}
+              {run && result.passed && result.quality?.reliable !== false && (() => { const c = CAST[run.quest.chapters[run.i].who] || CAST.narr; return <div className="st-speak"><i aria-hidden="true">{c.icon}</i><div><b>{c.name}</b><p>{c.cheer[run.i % 2]}</p></div></div> })()}
               <h2>{result.quality?.reliable === false ? 'Hmm, I couldn’t hear that one clearly.' : result.passed ? 'Lovely. You did it.' : 'Good try. Let’s go again.'}</h2>
               {result.quality?.reliable === false && <><p>{adviceFor(result.quality).text}</p><p className="st-why">Why: {adviceFor(result.quality).why}{result.quality.noiseFloorDb != null && ` (room floor ${result.quality.noiseFloorDb} dB, your voice ${result.quality.snrDb ?? '–'} dB above it)`}</p></>}
               <div className="st-actions">{run && result.passed && result.quality?.reliable !== false
