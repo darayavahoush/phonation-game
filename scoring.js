@@ -243,7 +243,13 @@ function qualityOf(trial, voicedFrames) {
   const snrDb = voicedDb.length ? median(voicedDb) - noise.db : null;
   if (snrDb != null && snrDb < 15) flags.push('low_snr');
 
-  const unreliable = ['not_calibrated', 'high_noise', 'clipping', 'capture_processing', 'low_snr'];
+  // A high floor alone does not spoil a trial: if the voice still sits well above it
+  // (snr >= 15 dB) the measurement is sound. 'high_noise' only counts when the voice is
+  // NOT clearly above the floor (or there was no voice to compare).
+  const voiceClear = snrDb != null && snrDb >= 15;
+  const unreliable = ['not_calibrated', 'clipping', 'capture_processing', 'low_snr'];
+  if (!voiceClear) unreliable.push('high_noise');
+  const blocking = flags.filter((f) => unreliable.includes(f));
   return {
     noiseFloorDb: round(noise.db, 1),
     snrDb: round(snrDb, 1),
@@ -252,8 +258,8 @@ function qualityOf(trial, voicedFrames) {
     peakAbs: trial.peakAbs != null ? round(trial.peakAbs, 3) : null,
     captureProcessing: { ...captureInfo },
     flags,
-    reliable: !flags.some((f) => unreliable.includes(f)),
-    primaryIssue: primaryIssueOf(flags),
+    reliable: blocking.length === 0,
+    primaryIssue: primaryIssueOf(voiceClear ? flags.filter((f) => f !== 'high_noise') : flags),
     noiseSource: trial.noiseSource ?? 'calibration',
   };
 }

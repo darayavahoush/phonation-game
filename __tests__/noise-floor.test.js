@@ -60,7 +60,7 @@ test('a room that gets louder after calibration is still caught', () => {
   assert.ok(cal.ok, cal.warnings.join());
 
   feed(a, noise(12, -35, 8)); // a fan / TV / classmates start
-  const r = trialWith(a, { amp: 0.3, roomDb: -35 });
+  const r = trialWith(a, { amp: 0.03, roomDb: -35 });
   assert.ok(r.quality.flags.includes('high_noise'), JSON.stringify(r.quality));
   assert.equal(r.quality.primaryIssue, 'room_noisy');
   assert.equal(r.quality.reliable, false);
@@ -158,4 +158,23 @@ test('tracker forgets: only the last WINDOW_SEC counts', () => {
   for (const f of fakeFrames(Math.round(15 / hop), { quietDb: -30 })) t.push(f); // old loud room
   for (const f of fakeFrames(Math.round(NOISE_FLOOR.WINDOW_SEC / hop), { quietDb: -60 })) t.push(f); // now quiet
   assert.ok(t.estimate().db < -55);
+});
+
+// ------------------------------------------------- noise only matters if it drowns the voice
+
+test('a high floor with a clearly stronger voice is still reliable', () => {
+  const a = analyzer();
+  calibrateOn(a, noise(1.5, -40, 7)); // loud-ish room, over the -45 limit
+  const r = trialWith(a, { amp: 0.3, roomDb: -40 });
+  assert.ok(r.quality.snrDb >= 15, `snr ${r.quality.snrDb}`);
+  assert.equal(r.quality.reliable, true, JSON.stringify(r.quality));
+  assert.equal(r.quality.primaryIssue, null);
+});
+
+test('a high floor with a weak voice is "room_noisy" and unreliable', () => {
+  const a = analyzer();
+  calibrateOn(a, noise(1.5, -35, 8));
+  const r = trialWith(a, { amp: 0.03, roomDb: -35 });
+  assert.equal(r.quality.reliable, false, JSON.stringify(r.quality));
+  assert.equal(r.quality.primaryIssue, 'room_noisy');
 });

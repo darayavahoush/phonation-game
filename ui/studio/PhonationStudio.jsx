@@ -54,6 +54,8 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
   const [label, setLabel] = useState('')
   const [nudge, setNudge] = useState(false)
   const [seenHow, setSeenHow] = useState(false)
+  const [nextIdx, setNextIdx] = useState(0) // Lumi's suggestion: moves on after each reliable pass; nothing is stored
+  const [showAll, setShowAll] = useState(false)
   const [set, setSet] = useState({ gain: 'normal', clinician: false, recog: false, denoise: false })
   const reduced = useMemo(() => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches, [])
 
@@ -122,6 +124,7 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
           r = await A.current.end()
         }
       } else r = await A.current.end()
+      if (r.passed && r.quality?.reliable !== false) setNextIdx((i) => (i + 1) % Math.max(list.length, 1))
       setResult(r); setStage('result'); onResultRef.current?.(r, level)
     } catch (e) {
       setNotice({ kind: 'warn', text: `That try could not be scored: ${e?.message ?? e}` }); setStage('menu')
@@ -217,16 +220,19 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
 
       {stage === 'menu' && (
         <main className="st-menu">
-          <h2 className="st-menuhead">What shall we play?</h2>
+          <h2 className="st-menuhead">Ready for the next one?</h2>
           {processing && <p className="st-notice warn" role="alert">This device is changing the sound (noise, echo or volume processing). Results will be marked unreliable. Try another microphone or browser.</p>}
           {calWarn.includes('unstable_background') && <p className="st-notice warn">We heard sound while measuring the room, so quiet voices may be missed. <button className="st-link" onClick={recalibrate}>Measure the room again</button></p>}
-          {Object.entries(groups).map(([type, ls]) => (
+          {!showAll && list[nextIdx] && (() => { const l = list[nextIdx]; const name = levelTitle(l, 0, 1); return (
+            <section className="st-next"><button className="st-level" onClick={() => choose(l, name)}><i className="st-ico" aria-hidden="true">{ICON[l.type] ?? '🔆'}</i><strong>{name}</strong><span>{levelPrompt(l)}</span></button></section>
+          ) })()}
+          {showAll && Object.entries(groups).map(([type, ls]) => (
             <section key={type}>
               <h2>{TYPE_LABEL[type] ?? type}</h2>
               <div className="st-levels">{ls.map((l, i) => { const name = levelTitle(l, i, ls.length); return <button key={l.id ?? name + i} className="st-level" onClick={() => choose(l, name)}><i className="st-ico" aria-hidden="true">{ICON[l.type] ?? '🔆'}</i><strong>{name}</strong><span>{levelPrompt(l)}</span>{levelChips(l).length > 0 && <em className="st-chips">{levelChips(l).map((c) => <b key={c}>{c}</b>)}</em>}</button> })}</div>
             </section>
           ))}
-          <div className="st-menufoot"><button className="st-link" onClick={() => setStage('howto')}>How to play</button><button className="st-link" onClick={recalibrate}>Measure the room again</button></div>
+          <div className="st-menufoot"><button className="st-link" onClick={() => setShowAll((v) => !v)}>{showAll ? 'Back to Lumi’s pick' : 'Choose a different game'}</button><button className="st-link" onClick={() => setStage('howto')}>How to play</button><button className="st-link" onClick={recalibrate}>Measure the room again</button></div>
         </main>
       )}
 
@@ -246,7 +252,7 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
               {result.quality?.reliable !== false && <div className="st-stars" aria-label={`${result.stars ?? 0} of 3 stars`}>{[0, 1, 2].map((i) => <b key={i} className={i < (result.stars ?? 0) ? 'on' : ''}>★</b>)}</div>}
               <h2>{result.quality?.reliable === false ? 'Hmm, I couldn’t hear that one clearly.' : result.passed ? 'Lovely. You did it.' : 'Good try. Let’s go again.'}</h2>
               {result.quality?.reliable === false && <><p>{adviceFor(result.quality).text}</p><p className="st-why">Why: {adviceFor(result.quality).why}</p></>}
-              <div className="st-actions"><button className="st-btn" onClick={() => play(level)}>Again</button><button className="st-btn ghost" onClick={() => setStage('menu')}>Pick another</button></div>
+              <div className="st-actions"><button className="st-btn" onClick={() => play(level)}>Again</button><button className="st-btn ghost" onClick={() => { setShowAll(false); setStage('menu') }}>Next game</button></div>
             </>}
           </div>
           {stage === 'result' && result && set.clinician && <Clinician result={result} level={level} recognition={recognition} onExport={exportJson} />}
