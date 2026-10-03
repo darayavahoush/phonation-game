@@ -8,7 +8,11 @@ const trail = (a, b, c, d) => { // Catmull-Rom -> cubic bezier for one segment b
   const t = 0.18
   return `M${b[0]} ${b[1]} C${b[0] + (c[0] - a[0]) * t} ${b[1] + (c[1] - a[1]) * t} ${c[0] - (d[0] - b[0]) * t} ${c[1] - (d[1] - b[1]) * t} ${c[0]} ${c[1]}`
 }
-const rgb = (c, a = 1) => `rgba(${c.join(',')},${a})`
+// Realm colours are hex strings (sky) or [r,g,b] arrays (wave/spark); accept both.
+const rgb = (c, a = 1) => {
+  if (typeof c === 'string') { const h = c.replace('#', ''), n = parseInt(h.length === 3 ? h.replace(/./g, '$&$&') : h, 16); c = [(n >> 16) & 255, (n >> 8) & 255, n & 255] }
+  return `rgba(${c.join(',')},${a})`
+}
 
 export default function WorldMap({ quests, arc, openAll, avatar, reduced, onGo }) {
   const here = Math.min(arc, quests.length - 1)
