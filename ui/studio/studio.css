@@ -150,3 +150,5 @@
 .st-chips b { padding: .15rem .6rem; border-radius: 999px; font-size: .85rem; font-weight: 700; background: rgba(255,155,84,.2); color: var(--lamp); }
 
 .st-why { font-size: .9rem; color: var(--mute) !important; opacity: .85; }
+
+.st-say { font: 800 clamp(3.5rem, 14vw, 7rem)/1 var(--display); color: var(--lamp); letter-spacing: .04em; text-shadow: 0 0 24px rgba(255,155,84,.55); margin: .25rem 0; }

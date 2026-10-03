@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PhonationEngine, STARTER_LEVELS } from '../../index.js'
 import { MockEngine } from './mockEngine.js'
-import { adapt, TYPE_LABEL, levelList, levelTitle, levelPrompt, levelGoalMs, silenceEndMs, levelChips } from './engineAdapter.js'
+import { adapt, TYPE_LABEL, levelList, levelTitle, levelPrompt, levelSay, levelGoalMs, silenceEndMs, levelChips } from './engineAdapter.js'
 import VoiceStage from './VoiceStage.jsx'
 import Clinician from './Clinician.jsx'
 import Face from './Face.jsx'
@@ -208,6 +208,7 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
           <div className="st-orb" aria-hidden="true"><Face /></div>
           <div className="st-readycard">
             <div className="st-bigico" aria-hidden="true">{ICON[level.type] ?? '🔆'}</div>
+            {levelSay(level) && <div className="st-say" aria-hidden="true">{levelSay(level)}</div>}
             <h2>{label || levelTitle(level)}</h2>
             <p className="st-lead">{levelPrompt(level)}</p>
             <ol className="st-steps">{(HOWTO[level.type] || HOWTO.default).map((s, i) => <li key={i}><b>{i + 1}</b>{s}</li>)}</ol>
@@ -241,6 +242,7 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
           <VoiceStage read={A.current.read} active={stage === 'play'} goalMs={goal} glide={level.type === 'pitch_glide'} gain={GAIN[set.gain]} reduced={reduced} onOnset={() => setTally((n) => n + 1)} />
           <div className="st-copy" aria-live="polite">
             {stage === 'play' && <>
+              {levelSay(level) && <div className="st-say" aria-hidden="true">{levelSay(level)}</div>}
               <h2>{levelPrompt(level)}</h2>
               <p className="st-coach">{heard ? (goal ? 'Keep going! You’re doing it! 🚂' : 'Nice! I can hear you! 🎉') : 'Take a breath… then say it!'}</p>
               {nudge && !heard && <p className="st-nudge">Try a little louder, or move closer to the mic 🎤</p>}

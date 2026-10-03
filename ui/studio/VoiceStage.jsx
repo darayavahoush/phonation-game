@@ -29,7 +29,7 @@ export default function VoiceStage({ read, active, goalMs, glide, gain = 1, redu
       const { read, active, goalMs, glide, gain, reduced, onOnset } = cfg.current
       const v = active ? read() : { voiced: false, level: 0, pitch: null }
       const k = reduced ? 1 : 1 - Math.exp(-dt / 0.09) // ~90 ms response: feels instant, not jittery
-      const base = Math.min(W, H) * 0.16
+      const base = Math.min(W, H) * 0.2
       const target = base * (1 + (v.voiced ? 0.2 + v.level * 0.55 * gain : 0))
       S.r += (target - S.r) * k
       S.warm += ((v.voiced ? 1 : 0) - S.warm) * (reduced ? 1 : 1 - Math.exp(-dt / 0.25))
@@ -55,10 +55,10 @@ export default function VoiceStage({ read, active, goalMs, glide, gain = 1, redu
           ctx.stroke()
         } else {
           ctx.beginPath(); ctx.moveTo(cx - span + off * step, cy)
-          S.trail.forEach((s, i) => ctx.lineTo(cx - span + (off + i) * step, cy - s.l * H * 0.16 * gain))
-          for (let i = S.trail.length - 1; i >= 0; i--) ctx.lineTo(cx - span + (off + i) * step, cy + S.trail[i].l * H * 0.16 * gain)
-          ctx.closePath(); const g = ctx.createLinearGradient(cx - span, 0, cx, 0)
-          g.addColorStop(0, rgba(col, 0)); g.addColorStop(1, rgba(col, 0.28)); ctx.fillStyle = g; ctx.fill()
+          S.trail.forEach((s, i) => ctx.lineTo(cx - span + (off + i) * step, cy - s.l * H * 0.4 * gain))
+          for (let i = S.trail.length - 1; i >= 0; i--) ctx.lineTo(cx - span + (off + i) * step, cy + S.trail[i].l * H * 0.4 * gain)
+          ctx.closePath(); ctx.strokeStyle = rgba(col, 0.9); ctx.lineWidth = 3; const g = ctx.createLinearGradient(cx - span, 0, cx, 0)
+          g.addColorStop(0, rgba(col, 0)); g.addColorStop(1, rgba(col, 0.5)); ctx.fillStyle = g; ctx.fill(); ctx.stroke()
         }
       }
 
