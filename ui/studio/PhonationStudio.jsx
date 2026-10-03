@@ -54,7 +54,7 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
   const [label, setLabel] = useState('')
   const [nudge, setNudge] = useState(false)
   const [seenHow, setSeenHow] = useState(false)
-  const [nextIdx, setNextIdx] = useState(0) // Lumi's suggestion: moves on after each reliable pass; nothing is stored
+  const [nextIdx, setNextIdx] = useState(() => Math.max(0, levelList(levels).findIndex((l) => l.type === 'cv_syllable'))) // start on a real syllable // Lumi's suggestion: moves on after each reliable pass; nothing is stored
   const [showAll, setShowAll] = useState(false)
   const [set, setSet] = useState({ gain: 'normal', clinician: false, recog: false, denoise: false })
   const reduced = useMemo(() => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches, [])
@@ -253,7 +253,7 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
               {result.passed && result.quality?.reliable !== false && <div className="st-confetti" aria-hidden="true">{Array.from({ length: 16 }, (_, i) => <i key={i} style={{ left: `${(i * 6.3 + 3) % 100}%`, animationDelay: `${(i % 6) * 0.25}s`, background: ['#FF9B54', '#FFD08A', '#2FB8A6', '#60A5FA', '#F0604A'][i % 5] }} />)}</div>}
               {result.quality?.reliable !== false && <div className="st-stars" aria-label={`${result.stars ?? 0} of 3 stars`}>{[0, 1, 2].map((i) => <b key={i} className={i < (result.stars ?? 0) ? 'on' : ''}>★</b>)}</div>}
               <h2>{result.quality?.reliable === false ? 'Hmm, I couldn’t hear that one clearly.' : result.passed ? 'Lovely. You did it.' : 'Good try. Let’s go again.'}</h2>
-              {result.quality?.reliable === false && <><p>{adviceFor(result.quality).text}</p><p className="st-why">Why: {adviceFor(result.quality).why}</p></>}
+              {result.quality?.reliable === false && <><p>{adviceFor(result.quality).text}</p><p className="st-why">Why: {adviceFor(result.quality).why}{result.quality.noiseFloorDb != null && ` (room floor ${result.quality.noiseFloorDb} dB, your voice ${result.quality.snrDb ?? '–'} dB above it)`}</p></>}
               <div className="st-actions"><button className="st-btn" onClick={() => play(level)}>Again</button><button className="st-btn ghost" onClick={() => { setShowAll(false); setStage('menu') }}>Next game</button></div>
             </>}
           </div>
