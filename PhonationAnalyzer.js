@@ -49,8 +49,19 @@ export class PhonationAnalyzer {
       if (this._trial && f.t >= this._trial.startT) this._trial.frames.push(f);
       this._updateLive(f);
     }
+    this._collectAudio();
     if (this._trial) this.live.trialElapsedSec = this.extractor.streamTimeSec - this._trial.startT;
     return this.live;
+  }
+
+  /** Opt-in: keep the trial's 16 kHz audio IN MEMORY ONLY, for on-device recognition. Never persisted. */
+  _collectAudio() {
+    const tr = this._trial;
+    if (!tr || !tr.audio || !this.extractor.lastBlock) return;
+    const y = this.extractor.lastBlock;
+    if (tr.audioLen + y.length > tr.audioCap) return; // bounded by maxDurationSec
+    tr.audio.push(Float32Array.from(y));
+    tr.audioLen += y.length;
   }
 
   _updateLive(f) {
@@ -117,9 +128,17 @@ export class PhonationAnalyzer {
 
   // ----------------------------------------------------------------- trials
 
-  beginTrial(levelInput) {
+  /**
+   * @param {object} levelInput
+   * @param {{captureAudio?: boolean}} [opts] captureAudio keeps the trial's audio in memory until
+   *        endTrialWithAudio() so an on-device recognizer can run. Default false: audio is never kept.
+   */
+  beginTrial(levelInput, { captureAudio = false } = {}) {
     const level = normalizeLevel(levelInput);
     this._trial = {
+      audio: captureAudio ? [] : null,
+      audioLen: 0,
+      audioCap: Math.round((level.maxDurationSec + 2) * this.extractor.fs),
       level,
       startT: this.extractor.streamTimeSec,
       startedAtMs: Date.now(),
@@ -150,6 +169,25 @@ export class PhonationAnalyzer {
       startT: tr.startT,
       startedAtMs: tr.startedAtMs,
     });
+  }
+
+  /**
+   * Like endTrial(), but also hands back the in-memory audio (null unless the trial was started
+   * with captureAudio). The caller owns the buffer and must not store or transmit it.
+   * @returns {{result: object, level: object, audio: Float32Array|null, sampleRate: number}}
+   */
+  endTrialWithAudio() {
+    if (!this._trial) throw new Error('No trial in progress');
+    const tr = this._trial;
+    const result = this.endTrial();
+    let audio = null;
+    if (tr.audio) {
+      audio = new Float32Array(tr.audioLen);
+      let o = 0;
+      for (const b of tr.audio) { audio.set(b, o); o += b.length; }
+      tr.audio = null;
+    }
+    return { result, level: tr.level, audio, sampleRate: this.extractor.fs };
   }
 
   /** Abandon a trial without scoring. */

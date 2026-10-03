@@ -74,6 +74,7 @@ export class FeatureExtractor {
 
     this.rawCount = 0;
     this.clippedSamples = 0;
+    this.lastBlock = null; // latest decimated, DC-blocked block (used only for opt-in on-device recognition)
   }
 
   /** Seconds of audio received so far. */
@@ -100,6 +101,7 @@ export class FeatureExtractor {
       y[i] = out;
     }
     this._append(y);
+    this.lastBlock = y;
 
     const frames = [];
     while (this.nextC + this.half < this.base + this.len) {
