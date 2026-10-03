@@ -7,3 +7,4 @@ export { STARTER_LEVELS } from './levels.js';
 export { NullRecognizer, MockRecognizer, TransformersPhonemeRecognizer, resampleLinear, MODEL_SAMPLE_RATE } from './recognition/recognizers.js';
 export { scorePosteriors, resolveTargets, ctcGreedy, softmaxRows, normalizeVocab, THRESHOLDS } from './recognition/posteriors.js';
 export { summarizeForReport, buildDraftPrompt } from './report/summary.js';
+export { NOISE_FLOOR, estimateFloor, NoiseTracker, primaryIssueOf } from './noiseFloor.js';

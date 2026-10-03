@@ -105,6 +105,10 @@ export interface Quality {
   flags: QualityFlag[];
   /** false if any flag undermines intensity/onset measures; show to the clinician. */
   reliable: boolean;
+  /** The single most important reason for a flag, for UI wording; null when there is none. */
+  primaryIssue: 'not_calibrated' | 'too_loud' | 'device_processing' | 'room_noisy' | 'voice_soft' | 'no_voice' | null;
+  /** Where the noise floor came from: the calibration, or a re-estimate from recent quiet audio. */
+  noiseSource: 'default' | 'calibration' | 'tracked';
 }
 
 export interface ContourPoint {

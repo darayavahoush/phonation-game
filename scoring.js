@@ -4,6 +4,7 @@ import {
   findNuclei, analyzeOnset, downsampleContour,
 } from './analysis.js';
 import { mean, median, sd, percentile, slope, round, clamp } from './dsp.js';
+import { primaryIssueOf } from './noiseFloor.js';
 
 export const SCHEMA_VERSION = 1;
 
@@ -252,6 +253,8 @@ function qualityOf(trial, voicedFrames) {
     captureProcessing: { ...captureInfo },
     flags,
     reliable: !flags.some((f) => unreliable.includes(f)),
+    primaryIssue: primaryIssueOf(flags),
+    noiseSource: trial.noiseSource ?? 'calibration',
   };
 }
 

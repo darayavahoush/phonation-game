@@ -140,3 +140,17 @@ How it works: the model's CTC posteriors are scored for isolated syllables (`cv_
 ## Files
 
 `dsp.js` (YIN, FFT, decimator, stats) · `FeatureExtractor.js` (frames) · `analysis.js` (segments, nuclei, onset/VOT) · `scoring.js` (per-type scorers, quality) · `levelSchema.js` (typed levels, validation) · `PhonationAnalyzer.js` (calibration, live state, trials) · `PhonationEngine.js` + `phonation-worklet.js` (browser mic) · `levels.js` (starter curriculum) · `recognition/` (posterior scoring, recognizer adapters) · `report/` (de-identified summary) · `workletSource.js` (generated from `phonation-worklet.js`) · `ui/` · `types.d.ts` · `__tests__/`
+
+## Noise floor and the "room is noisy" verdict
+
+The room-noise floor is measured in calibration and refreshed from the last 10 s of audio before each
+trial. Frames more than 6 dB above the quiet baseline (a cough, a click, speech) are treated as
+transients and left out, so one disturbance does not make a quiet room "noisy" for the whole session.
+`quality.noiseSource` says which estimate was used (`calibration` or `tracked`).
+
+`quality.primaryIssue` names the one reason a recording was flagged so a UI can word it correctly:
+`room_noisy` (find a quieter place), `voice_soft` (speak up or move closer), `too_loud`,
+`device_processing`, `not_calibrated` or `no_voice`. A soft voice is not a noisy room.
+
+The 6 dB margin, the 20th-percentile baseline, the 10 s window and the 15 dB `low_snr` limit are
+placeholders chosen on synthetic audio. They are not validated on real devices or rooms.

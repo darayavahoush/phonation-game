@@ -20,8 +20,8 @@ const HOWTO = {
 // clipping means TOO loud, so "move closer" would make it worse.
 const KID_ADVICE = [
   ['clipping', 'Wow, that was super loud! Try a little softer, or sit a bit further from the microphone.'],
-  ['low_snr', 'The room is a bit noisy. Try somewhere quieter, or move a little closer to the microphone.'],
   ['high_noise', 'The room is a bit noisy. Try somewhere quieter.'],
+  ['low_snr', 'That one was a bit quiet for me. Try a little louder, or move closer to the microphone.'],
   ['no_voicing', 'I didn’t hear a sound that time. Take a breath and say it a little louder.'],
   ['not_calibrated', 'Let’s listen to the room again first.'],
   ['capture_processing', 'This microphone is changing the sound. A grown-up can try another microphone or browser.'],

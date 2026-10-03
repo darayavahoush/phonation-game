@@ -2,6 +2,7 @@ import { FeatureExtractor } from './FeatureExtractor.js';
 import { normalizeLevel } from './levelSchema.js';
 import { scoreTrial } from './scoring.js';
 import { percentile, median, clamp, round } from './dsp.js';
+import { NoiseTracker, estimateFloor, NOISE_FLOOR } from './noiseFloor.js';
 
 const LIVE_BRIDGE_SEC = 0.06;
 const LIVE_DB_RANGE = 30; // dB above (noise floor + 6) that maps to intensityNorm = 1
@@ -21,6 +22,8 @@ export class PhonationAnalyzer {
     this.calibrated = false;
     this.captureInfo = {};
     this._calib = null;
+    this._noiseTracker = new NoiseTracker({ hopSec: this.hopSec });
+    this._noiseSource = 'default';
     this._trial = null;
     this._dbEma = null;
     this._f0Recent = [];
@@ -45,6 +48,7 @@ export class PhonationAnalyzer {
   push(block) {
     const frames = this.extractor.push(block);
     for (const f of frames) {
+      this._noiseTracker.push(f);
       if (this._calib) this._calib.push(f);
       if (this._trial && f.t >= this._trial.startT) this._trial.frames.push(f);
       this._updateLive(f);
@@ -114,18 +118,20 @@ export class PhonationAnalyzer {
       return { ok: false, noise: this.extractor.noise, warnings: ['too_short'], frames: frames.length };
     }
     const dbs = frames.map((f) => f.db);
-    const noise = {
-      db: percentile(dbs, 90),
-      hfDb: percentile(frames.map((f) => f.hfDb), 90),
-      lfDb: percentile(frames.map((f) => f.lfDb), 90),
-    };
+    // Robust floor: transients (a cough, a click, a few words) are left out instead of raising the floor.
+    const est = estimateFloor(frames);
+    const noise = est
+      ? { db: est.db, hfDb: est.hfDb, lfDb: est.lfDb }
+      : { db: percentile(dbs, 90), hfDb: percentile(frames.map((f) => f.hfDb), 90), lfDb: percentile(frames.map((f) => f.lfDb), 90) };
+    const transientFraction = est ? est.transientFraction : 1;
     const warnings = [];
-    if (percentile(dbs, 99) - median(dbs) > 15) warnings.push('unstable_background'); // speech / bangs while calibrating
+    if (transientFraction > NOISE_FLOOR.UNSTABLE_FRACTION) warnings.push('unstable_background'); // speech / bangs while calibrating
     if (noise.db > -45) warnings.push('high_noise');
+    this._noiseSource = 'calibration';
     this.extractor.setNoise(noise);
     this.calibrated = true;
     this._clipMark = this.extractor.clippedSamples;
-    return { ok: warnings.length === 0, noise, warnings, frames: frames.length };
+    return { ok: warnings.length === 0, noise, warnings, frames: frames.length, transientFraction };
   }
 
   // ----------------------------------------------------------------- trials
@@ -135,7 +141,20 @@ export class PhonationAnalyzer {
    * @param {{captureAudio?: boolean}} [opts] captureAudio keeps the trial's audio in memory until
    *        endTrialWithAudio() so an on-device recognizer can run. Default false: audio is never kept.
    */
+  /**
+   * Re-estimate the floor from the last few seconds, so a disturbed calibration (or a room
+   * that changed) does not stay wrong all session. Runs only between trials: the gate
+   * never moves while a trial is being recorded.
+   */
+  _refreshNoiseFloor() {
+    const est = this._noiseTracker.estimate();
+    if (!est) return;
+    this.extractor.setNoise({ db: est.db, hfDb: est.hfDb, lfDb: est.lfDb });
+    this._noiseSource = 'tracked';
+  }
+
   beginTrial(levelInput, { captureAudio = false } = {}) {
+    this._refreshNoiseFloor();
     const level = normalizeLevel(levelInput);
     this._trial = {
       audio: captureAudio ? [] : null,
@@ -169,6 +188,7 @@ export class PhonationAnalyzer {
       hopSec: this.hopSec,
       noise: { ...this.extractor.noise },
       calibrated: this.calibrated,
+      noiseSource: this._noiseSource,
       clippedSamples: this.extractor.clippedSamples - tr.clipStart,
       clipRuns: this.extractor.clipRuns - tr.clipRunStart,
       totalSamples: this.extractor.rawCount - tr.rawStart,
