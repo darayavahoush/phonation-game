@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { createCounter } from './syllableCounter.js'
 
 // One calm moving element: a lantern that swells and warms while the voice is on.
 // Everything is drawn from requestAnimationFrame reading a ref; React never re-renders per frame.
@@ -16,7 +17,7 @@ export default function VoiceStage({ read, active, goalMs, glide, gain = 1, redu
     const cv = ref.current
     const ctx = cv.getContext('2d')
     let raf, last = performance.now(), W = 0, H = 0
-    const S = { hist: new Array(90).fill(0), hacc: 0, gap: 1e9, pend: false, t: 0, r: 0, warm: 0, run: 0, was: false, trail: [], ripples: [], acc: 0, lv: 0, ph: 0, amp: 0, cyc: 3, sparks: [], sec: 0 }
+    const S = { hist: new Array(90).fill(0), hacc: 0, count: createCounter(), t: 0, r: 0, warm: 0, run: 0, was: false, trail: [], ripples: [], acc: 0, lv: 0, ph: 0, amp: 0, cyc: 3, sparks: [], sec: 0 }
     const fit = () => {
       const d = Math.min(2, window.devicePixelRatio || 1), b = cv.getBoundingClientRect()
       W = b.width; H = b.height; cv.width = W * d; cv.height = H * d; ctx.setTransform(d, 0, 0, d, 0, 0)
@@ -34,9 +35,7 @@ export default function VoiceStage({ read, active, goalMs, glide, gain = 1, redu
       S.r += (target - S.r) * k
       S.warm += ((v.voiced ? 1 : 0) - S.warm) * (reduced ? 1 : 1 - Math.exp(-dt / 0.25))
       if (v.voiced) S.run += dt * 1000; else S.run = 0
-      if (v.voiced) { if (!S.was) { S.pend = S.gap > 450; S.gap = 0 } else if (S.pend && S.run > 80) { S.pend = false; onOnset?.(); if (!reduced && S.ripples.length < 5) S.ripples.push({ age: 0 }) } }
-      else S.gap += dt * 1000 // only a real pause (>0.45 s) starts a new count, so one "ba" with a tiny dropout counts once
-      S.was = v.voiced
+      if (S.count(v.voiced, v.level, dt * 1000)) { onOnset?.(); if (!reduced && S.ripples.length < 5) S.ripples.push({ age: 0 }) } // one dot per spoken syllable
 
       S.lv += ((v.voiced ? v.level : 0) - S.lv) * 0.3 // smoothed so the trail tapers instead of ending in a cliff
       S.acc += dt

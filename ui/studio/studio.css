@@ -225,3 +225,4 @@
 .st-map .st-smoke { animation: st-smokek 4.2s ease-out infinite; transform-box: fill-box; transform-origin: center; } @keyframes st-smokek { from { transform: translateY(10px) scale(.7); opacity: .85; } to { transform: translateY(-26px) scale(1.3); opacity: 0; } }
 .st-map .st-flow { animation: st-flowk 1.6s linear infinite; } @keyframes st-flowk { to { stroke-dashoffset: -28; } }
 @media (prefers-reduced-motion: reduce) { .st-map .st-bob, .st-map .st-flap, .st-map .st-wing, .st-map .st-twinkle, .st-map .st-rise, .st-map .st-spout, .st-map .st-float, .st-map .st-drift, .st-map .st-glow, .st-map .st-smoke, .st-map .st-flow { animation: none; } }
+.st-heardn { margin: .2rem 0 0; font-weight: 700; color: var(--lamp); }
