@@ -35,4 +35,11 @@ h = json.load(open(out)); assert h['consonant']['classes'] == sorted(cons) and l
 one = dict(np.load(tmp)); keep = one['speaker'] == 's01'
 np.savez(tmp, **{k: (v[keep] if getattr(v, 'shape', None) and len(v) == N else v) for k, v in one.items()})
 r1 = train.run(tmp, quiet=True); assert r1['post (browser-sized)'][2] > 0.3  # 48 training clips: low but far above chance (0.08)
+# transfer: train on "tts" speakers, test on a differently shifted "real" speaker; and a label-shuffled control
+d = dict(np.load(tmp)); n = len(d['syllable'])
+tts, real = os.path.join(os.path.dirname(tmp), 'tts.npz'), os.path.join(os.path.dirname(tmp), 'real.npz')
+np.savez(tts, **d); d2 = dict(d); d2['post'] = d['post'] + rng.normal(0, 0.05, d['post'].shape).astype(np.float32); np.savez(real, **d2)
+tr = train.transfer(tts, real); assert tr['post (browser-sized)'][2] > 0.3, tr
+d3 = dict(d2); d3['consonant'] = rng.permutation(d2['consonant']); np.savez(real, **d3)
+ctl = train.transfer(tts, real); assert ctl['post (browser-sized)'][0] < 0.45, ctl           # shuffled labels must not score well
 print('selftest OK')

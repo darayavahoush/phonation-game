@@ -1,3 +1,4 @@
 __pycache__/
 training/feats.npz
 training/head.json
+tts-data/

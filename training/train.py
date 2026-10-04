@@ -3,6 +3,7 @@
 
   python3 training/train.py training/feats.npz
   python3 training/train.py training/feats.npz --export training/head.json   # also save the browser-sized head
+  python3 training/train.py --train training/feats_tts.npz --test training/feats_real.npz   # train on TTS, test on real voices
 
 Two heads, one for the starting consonant and one for the vowel, so a sound you recorded in a few
 syllables still helps the others. A syllable counts as right only if BOTH heads are right.
@@ -102,6 +103,38 @@ def run(path, C=0.1, export=None, quiet=False):
     return res
 
 
+def transfer(train_path, test_path, C=0.1):
+    """Fit on one dataset (e.g. TTS), score on another (real recordings). The only number that says whether TTS data helps."""
+    tr, te = np.load(train_path, allow_pickle=True), np.load(test_path, allow_pickle=True)
+    if tr['post'].shape[1:] != te['post'].shape[1:] or list(tr['layers']) != list(te['layers']):
+        sys.exit('The two feature files were made with different models/settings.')
+    seen = set(tr['consonant']) | set(tr['vowel']); unseen = (set(te['consonant']) | set(te['vowel'])) - seen
+    print(f'train: {len(tr["syllable"])} clips from {len(set(tr["speaker"]))} voices.  test: {len(te["syllable"])} clips from {len(set(te["speaker"]))} speaker(s).')
+    if unseen: print(f'note: test has sounds the training set never saw: {sorted(unseen)} (they will count as wrong)')
+    cons, vow = te['consonant'], te['vowel']
+    base = np.array([baseline(g, c, v) for g, c, v in zip(te['greedy'], cons, vow)])
+    print(f'\n{"features":<26}{"consonant":>10}{"vowel":>8}{"syllable":>10}')
+    print(f'{"plain model (baseline)":<26}{base[:, 0].mean():>10.0%}{base[:, 1].mean():>8.0%}{(base[:, 0] & base[:, 1]).mean():>10.0%}')
+    ftr, fte = feature_sets(tr), feature_sets(te); out = {}
+    for name in ftr:
+        pr = []
+        for ytr, yte in ((tr['consonant'], cons), (tr['vowel'], vow)):
+            sc, m = fit(ftr[name], ytr, C); pr.append(m.predict(sc.transform(fte[name])))
+        ok = (pr[0] == cons, pr[1] == vow); out[name] = (ok[0].mean(), ok[1].mean(), (ok[0] & ok[1]).mean())
+        print(f'{name:<26}{out[name][0]:>10.0%}{out[name][1]:>8.0%}{out[name][2]:>10.0%}')
+        if name.startswith('post'): pc = pr[0]
+    print('\nVoicing pairs on the real clips (browser-sized features):')
+    for x, y in PAIRS:
+        for a, b in ((x, y), (y, x)):
+            m = cons == a
+            if m.any(): print(f'  {a} -> {a}: {(pc[m] == a).mean():.0%}   {a} -> {b}: {(pc[m] == b).mean():.0%}   (n={m.sum()})')
+    return out
+
+
 if __name__ == '__main__':
-    ap = argparse.ArgumentParser(); ap.add_argument('feats'); ap.add_argument('--C', type=float, default=0.1); ap.add_argument('--export')
-    a = ap.parse_args(); run(a.feats, a.C, a.export)
+    ap = argparse.ArgumentParser(); ap.add_argument('feats', nargs='?'); ap.add_argument('--C', type=float, default=0.1); ap.add_argument('--export')
+    ap.add_argument('--train'); ap.add_argument('--test')
+    a = ap.parse_args()
+    if a.train and a.test: transfer(a.train, a.test, a.C)
+    elif a.feats: run(a.feats, a.C, a.export)
+    else: ap.error('give a features file, or --train and --test')

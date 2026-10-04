@@ -18,6 +18,18 @@ Tips that matter more than the model:
 - Record the sound the way your target players say it (for example Tamil or Indian-English th/dh), and decide that before you start.
 - Children: needs guardian consent and a plan for storing clips. Adult clips will not stand in for them.
 
+## 1b. Or generate synthetic clips with gTTS (no recording)
+
+```bash
+pip install gTTS numpy scipy && brew install ffmpeg
+python3 training/make_tts_dataset.py --out training/tts-data --sample 6
+```
+
+Makes ba pa da ta ga ka in 7 English accents, plus randomised copies (speed, echo, loudness, noise). Same folder layout as the
+collector export. **Listen to the files `--sample` prints before trusting the labels**: the label is the text sent to Google, not
+what it said. This is a few synthetic adult voices, so test it on real recordings (step 3, transfer mode), never on itself.
+For Hindi/other-script targets pass `--extra file.csv` (columns `syllable,lang,tld,text`).
+
 ## 2. Features (downloads the PyTorch model from Hugging Face, over 1 GB)
 
 ```bash
@@ -34,6 +46,14 @@ python3 training/train.py training/feats.npz
 Prints consonant, vowel and whole-syllable accuracy for the plain model (baseline), a head on the browser-sized
 features, and heads on several hidden layers, plus how often p/b, t/d, k/g and the other voicing pairs are swapped.
 With 2+ speakers it holds out one whole speaker at a time. With one speaker the number is optimistic.
+
+Train on TTS, test on real recordings (the number that matters):
+
+```bash
+python3 training/features.py training/tts-data --out training/feats_tts.npz
+python3 training/features.py ~/Downloads/lumivox-clips-....zip --out training/feats_real.npz
+python3 training/train.py --train training/feats_tts.npz --test training/feats_real.npz
+```
 
 `python3 training/selftest.py` checks the training code on synthetic features (it says nothing about real speech).
 
