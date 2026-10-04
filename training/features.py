@@ -93,7 +93,7 @@ def main():
     col = lambda n: np.array([r[n] for r in rows])
     np.savez_compressed(a.out, hid=np.array(hid, dtype=np.float16), post=np.array(post, dtype=np.float32), greedy=np.array(greedy),
                         layers=np.array(layers), syllable=col("syllable"), consonant=col("consonant"), vowel=col("vowel"),
-                        speaker=col("speaker"), voice=col("voice"), file=col("file"))
+                        speaker=col("speaker"), voice=col("voice"), clip_file=col("file"))
     print("saved", a.out)
 
 
