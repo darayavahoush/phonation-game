@@ -78,7 +78,7 @@ function Lab() {
       const r = await eng.current.endTrialAndRecognize(rec.current)
       const x = r.recognition || {}
       setRows((rs) => [{
-        n: rs.length + 1, target: syl, heard: x.heard ?? (x.reason || x.error || '—'), cons: x.consonant?.verdict ?? '', vowel: x.vowel?.verdict ?? '',
+        n: rs.length + 1, target: syl, heard: x.heard ?? (x.reason || x.error || '—'), cons: x.consonant?.verdict ?? '', place: x.consonant?.place ?? '', voicing: x.consonant?.voicing ?? '', llrV: x.consonant?.voicingLlr ?? '', vowel: x.vowel?.verdict ?? '',
         llrC: x.consonant?.llr ?? '', comp: x.consonant?.bestCompetitor ?? '', count: r.metrics?.syllableCount ?? '', reliable: r.quality?.reliable, flags: (r.quality?.flags || []).join(' '), ok: x.ok !== false,
       }, ...rs])
     } catch (e) { setErr(e.message) }
@@ -87,10 +87,12 @@ function Lab() {
 
   const ready = model.state === 'ready'
   const done = rows.filter((r) => r.cons)
-  const hit = done.filter((r) => r.cons === 'target_dominant').length
+  const hit = done.filter((r) => (r.place ? r.place === 'ok' : r.cons === 'target_dominant')).length
+  const VOICE = { target: '✅ voiced right', twin: '↔ other voicing', unsure: '🤔 voicing unclear' }
+  const PLACE = { ok: '✅ right sound', wrong: '❌ other sound', ambiguous: '🤔 unsure', weak_evidence: '… too weak' }
   const csv = () => {
-    const h = ['n', 'target', 'heard', 'consonant', 'vowel', 'llr_consonant', 'best_competitor', 'acoustic_count', 'reliable', 'flags']
-    const lines = [h.join(','), ...rows.slice().reverse().map((r) => [r.n, r.target, `"${r.heard}"`, r.cons, r.vowel, r.llrC, r.comp, r.count, r.reliable, `"${r.flags}"`].join(','))]
+    const h = ['n', 'target', 'heard', 'consonant', 'place', 'voicing', 'llr_voicing', 'vowel', 'llr_consonant', 'best_competitor', 'acoustic_count', 'reliable', 'flags']
+    const lines = [h.join(','), ...rows.slice().reverse().map((r) => [r.n, r.target, `"${r.heard}"`, r.cons, r.place, r.voicing, r.llrV, r.vowel, r.llrC, r.comp, r.count, r.reliable, `"${r.flags}"`].join(','))]
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' })); a.download = 'phoneme-lab.csv'; a.click()
   }
 
@@ -122,10 +124,10 @@ function Lab() {
       {err && <p role="alert" style={{ color: '#b00' }}>{err}</p>}
 
       {rows.length > 0 && <section>
-        <p><b>{hit} of {done.length}</b> attempts had the right starting consonant. <button onClick={csv}>Download CSV</button> <button onClick={() => setRows([])}>Clear</button></p>
+        <p><b>{hit} of {done.length}</b> attempts had the right starting consonant (b/p, d/t, g/k counted as the same sound; voicing shown separately). <button onClick={csv}>Download CSV</button> <button onClick={() => setRows([])}>Clear</button></p>
         <div style={{ overflowX: 'auto' }}><table style={{ borderCollapse: 'collapse', width: '100%' }}>
-          <thead><tr>{['#', 'meant', 'model heard', 'consonant', 'vowel', 'other sound', 'dots', 'mic'].map((h) => <th key={h} style={{ textAlign: 'left', borderBottom: '2px solid #ccc', padding: 4 }}>{h}</th>)}</tr></thead>
-          <tbody>{rows.map((r) => <tr key={r.n}>{[r.n, r.target, r.heard, VERDICT[r.cons] || r.cons, VERDICT[r.vowel] || r.vowel, r.comp, r.count, r.reliable === false ? '⚠ ' + r.flags : 'ok'].map((c, i) => <td key={i} style={{ borderBottom: '1px solid #eee', padding: 4 }}>{String(c)}</td>)}</tr>)}</tbody>
+          <thead><tr>{['#', 'meant', 'model heard', 'consonant', 'voicing', 'vowel', 'other sound', 'dots', 'mic'].map((h) => <th key={h} style={{ textAlign: 'left', borderBottom: '2px solid #ccc', padding: 4 }}>{h}</th>)}</tr></thead>
+          <tbody>{rows.map((r) => <tr key={r.n}>{[r.n, r.target, r.heard, (r.place ? PLACE[r.place] : VERDICT[r.cons]) || r.cons, VOICE[r.voicing] || '', VERDICT[r.vowel] || r.vowel, r.comp, r.count, r.reliable === false ? '⚠ ' + r.flags : 'ok'].map((c, i) => <td key={i} style={{ borderBottom: '1px solid #eee', padding: 4 }}>{String(c)}</td>)}</tr>)}</tbody>
         </table></div>
         <small>“model heard” is the raw phone string; “consonant / vowel” compare the model’s confidence in what you meant against its best rival. Not validated on children or on disordered speech, so treat a ❌ as a clue, not a mistake by the child.</small>
       </section>}

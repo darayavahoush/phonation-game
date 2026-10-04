@@ -314,3 +314,25 @@ test('tone-digit and length variants of the target vowel are the target, not a c
   assert.equal(s.vowel.verdict, 'target_dominant');
   assert.equal(s.consonant.verdict, 'target_dominant');
 });
+
+test('p vs b: right place with unclear voicing is reported as place ok, voicing unsure', () => {
+  const V = ['<pad>', 'p', 'b', 't', 'a'];
+  const post = [
+    Float32Array.from([0, 0.5, 0.45, 0, 0]),
+    Float32Array.from([0, 0, 0, 0, 0.9]),
+  ];
+  const s = scorePosteriors(post, V, 'pa');
+  assert.equal(s.consonant.verdict, 'ambiguous');
+  assert.equal(s.consonant.place, 'ok');
+  assert.equal(s.consonant.voicing, 'unsure');
+});
+
+test('a different place (k heard for t) is still wrong, not forgiven as voicing', () => {
+  const V = ['<pad>', 't', 'd', 'k', 'a'];
+  const post = [
+    Float32Array.from([0, 0.1, 0.05, 0.85, 0]),
+    Float32Array.from([0, 0, 0, 0, 0.9]),
+  ];
+  const s = scorePosteriors(post, V, 'ta');
+  assert.equal(s.consonant.place, 'wrong');
+});

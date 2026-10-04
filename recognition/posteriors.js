@@ -83,6 +83,16 @@ const FAMILY = Object.freeze({
   a: ['a', 'ɑ', 'ɐ'], e: ['e', 'ɛ', 'eɪ'], i: ['i', 'ɪ'], o: ['o', 'ɔ', 'oʊ'], u: ['u', 'ʊ'],
 });
 
+/** Stop pairs that differ (mainly) in voicing; place of articulation is the same. */
+export const VOICING_TWIN = Object.freeze({ p: 'b', b: 'p', t: 'd', d: 't', k: 'g', g: 'k' });
+
+function idsFor(letter, vocab) {
+  const fam = new Set(FAMILY[letter] || []);
+  const ids = [];
+  vocab.forEach((l, i) => { if (l != null && !isSpecial(l) && fam.has(basePhone(l))) ids.push(i); });
+  return ids;
+}
+
 /** Map a syllable like "ba" to the vocab labels that could represent its consonant and vowel. */
 export function resolveTargets(syllable, vocab) {
   const s = String(syllable || '').toLowerCase();
@@ -91,9 +101,7 @@ export function resolveTargets(syllable, vocab) {
   const vowelLetter = [...letters].reverse().find((c) => 'aeiou'.includes(c)) || null;
   const find = (letter) => {
     if (!letter) return null;
-    const fam = new Set(FAMILY[letter] || []);
-    const ids = [];
-    vocab.forEach((l, i) => { if (l != null && !isSpecial(l) && fam.has(basePhone(l))) ids.push(i); });
+    const ids = idsFor(letter, vocab);
     return { letter, labels: ids.map((i) => vocab[i]), ids };
   };
   const consonant = find(consonantLetter);
@@ -133,6 +141,42 @@ function evidence(post, vocab, target, isCompetitor) {
 }
 
 /**
+ * Splits a stop consonant's evidence into PLACE (p/b/t/d/k/g vs everything else) and VOICING
+ * (target vs its voiced/voiceless twin). Isolated-syllable voicing (p/b, t/d) is the model's weak
+ * spot, so a child who got the right place but an unclear voicing is reported separately.
+ */
+function placeAndVoicing(post, vocab, target) {
+  const twinLetter = VOICING_TWIN[target.letter];
+  if (!twinLetter) return null;
+  const twinIds = idsFor(twinLetter, vocab);
+  if (!twinIds.length) return null;
+  const eps = 1e-6;
+  const tgt = peakOf(post, target.ids);
+  const twin = peakOf(post, twinIds);
+  const inFamily = new Set([...target.ids, ...twinIds]);
+  const otherIds = [];
+  vocab.forEach((l, i) => { if (!inFamily.has(i) && !isSpecial(l) && isConsonantLabel(l)) otherIds.push(i); });
+  const other = peakOf(post, otherIds);
+  const stopPeak = Math.max(tgt.peak, twin.peak);
+  const placeLlr = Math.log(Math.max(stopPeak, eps) / Math.max(other.peak, eps));
+  let place = 'ambiguous';
+  if (stopPeak < THRESHOLDS.WEAK_PEAK && other.peak < THRESHOLDS.WEAK_PEAK) place = 'weak_evidence';
+  else if (placeLlr >= THRESHOLDS.LLR_MARGIN) place = 'ok';
+  else if (placeLlr <= -THRESHOLDS.LLR_MARGIN) place = 'wrong';
+  const voicingLlr = Math.log(Math.max(tgt.peak, eps) / Math.max(twin.peak, eps));
+  let voicing = 'unsure';
+  if (voicingLlr >= THRESHOLDS.LLR_MARGIN) voicing = 'target';
+  else if (voicingLlr <= -THRESHOLDS.LLR_MARGIN) voicing = 'twin';
+  return {
+    twin: twinLetter,
+    place,
+    placeLlr: Math.round(placeLlr * 100) / 100,
+    voicing,
+    voicingLlr: Math.round(voicingLlr * 100) / 100,
+  };
+}
+
+/**
  * @param {Float32Array[]} post   frames x V probabilities
  * @param {string[]|Map|object} vocabIn
  * @param {string} syllable       e.g. "ba"
@@ -145,7 +189,11 @@ export function scorePosteriors(post, vocabIn, syllable) {
     return { ok: false, reason: 'target_labels_not_in_vocab', missing: targets.missing, heard };
   }
   const out = { ok: true, heard, consonant: null, vowel: null, thresholds: THRESHOLDS };
-  if (targets.consonant) out.consonant = evidence(post, vocab, targets.consonant, isConsonantLabel);
+  if (targets.consonant) {
+    out.consonant = evidence(post, vocab, targets.consonant, isConsonantLabel);
+    const pv = placeAndVoicing(post, vocab, targets.consonant);
+    if (pv) Object.assign(out.consonant, pv);
+  }
   if (targets.vowel) out.vowel = evidence(post, vocab, targets.vowel, (l) => !isConsonantLabel(l));
   return out;
 }
