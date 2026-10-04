@@ -17,6 +17,9 @@ export default defineConfig({
       { find: /^react-dom\/(.*)$/, replacement: here('./node_modules/react-dom/$1') },
     ],
   },
-  build: { assetsInlineLimit: 0 }, // emit the audio worklet as a real file (a data: URL is flaky in Safari)
+  build: {
+    assetsInlineLimit: 0, // emit the audio worklet as a real file (a data: URL is flaky in Safari)
+    rollupOptions: { input: { main: here('./index.html'), lab: here('./lab.html') } }, // /lab.html = phoneme experiment page
+  },
   server: { fs: { allow: ['..'] } },
 })

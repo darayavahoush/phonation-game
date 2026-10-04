@@ -56,7 +56,7 @@ export class MockRecognizer {
  * acoustic metrics.
  */
 export class TransformersPhonemeRecognizer {
-  constructor({ transformers, modelId, vocab = null, dtype = 'q8', device = null, preprocess = null, minSec = 0.15 } = {}) {
+  constructor({ transformers, modelId, vocab = null, dtype = 'q8', device = null, preprocess = null, minSec = 0.15, onProgress = null } = {}) {
     if (!transformers || !transformers.AutoModelForCTC || !transformers.AutoProcessor) {
       throw new Error('Pass the @huggingface/transformers module as `transformers`');
     }
@@ -68,6 +68,7 @@ export class TransformersPhonemeRecognizer {
     this.device = device;
     this.preprocess = preprocess;
     this.minSec = minSec;
+    this.onProgress = onProgress; // optional: (p) => void, Transformers.js download progress events
     this.name = 'transformers.js-ctc';
     this._ready = null;
   }
@@ -81,6 +82,7 @@ export class TransformersPhonemeRecognizer {
     const { AutoModelForCTC, AutoProcessor, AutoTokenizer } = this.T;
     const opts = { dtype: this.dtype };
     if (this.device) opts.device = this.device;
+    if (this.onProgress) opts.progress_callback = this.onProgress;
     const [processor, model] = await Promise.all([
       AutoProcessor.from_pretrained(this.modelId),
       AutoModelForCTC.from_pretrained(this.modelId, opts),
