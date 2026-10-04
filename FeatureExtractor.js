@@ -10,6 +10,7 @@ export const PROFILES = Object.freeze({
 });
 
 export const GATE_MARGIN_DB = 8; // voiced frames must exceed noise floor by this much
+export const PROCESSED_GATE_MARGIN_DB = 3; // ...when the device applies AGC / noise suppression / echo cancellation
 export const MIN_GATE_DB = -70; // absolute floor for the gate (dBFS)
 const YIN_THRESHOLD = 0.2;
 const CLIP_LEVEL = 0.98;
@@ -66,7 +67,8 @@ export class FeatureExtractor {
     this.highBins = [Math.ceil(2000 / binHz), Math.min(nyq, Math.floor(6000 / binHz))];
 
     this.noise = { db: -60, hfDb: -90, lfDb: -70 };
-    this.gateDb = Math.max(this.noise.db + GATE_MARGIN_DB, MIN_GATE_DB);
+    this.gateMarginDb = GATE_MARGIN_DB;
+    this.gateDb = Math.max(this.noise.db + this.gateMarginDb, MIN_GATE_DB);
 
     // sample buffer (decimated, DC-blocked)
     this.buf = new Float32Array(this.fs * 2);
@@ -93,7 +95,14 @@ export class FeatureExtractor {
 
   setNoise(noise) {
     this.noise = { ...this.noise, ...noise };
-    this.gateDb = Math.max(this.noise.db + GATE_MARGIN_DB, MIN_GATE_DB);
+    this.gateDb = Math.max(this.noise.db + this.gateMarginDb, MIN_GATE_DB);
+  }
+
+  /** Margin above the noise floor a periodic frame needs to count as voiced. Lowered when the device applies
+   *  gain/noise processing, which pumps the measured floor up; periodicity (YIN) still has to agree. */
+  setGateMargin(db) {
+    this.gateMarginDb = db;
+    this.gateDb = Math.max(this.noise.db + this.gateMarginDb, MIN_GATE_DB);
   }
 
   /** @param {Float32Array} block mono samples in [-1, 1] @returns {object[]} new frames */

@@ -1,4 +1,4 @@
-import { FeatureExtractor } from './FeatureExtractor.js';
+import { FeatureExtractor, GATE_MARGIN_DB, PROCESSED_GATE_MARGIN_DB } from './FeatureExtractor.js';
 import { normalizeLevel } from './levelSchema.js';
 import { scoreTrial } from './scoring.js';
 import { percentile, median, clamp, round } from './dsp.js';
@@ -42,6 +42,8 @@ export class PhonationAnalyzer {
   /** Record what the browser actually applied to the mic track (see engine). */
   setCaptureInfo(info) {
     this.captureInfo = { ...info };
+    const processed = !!(info && (info.autoGainControl || info.noiseSuppression || info.echoCancellation));
+    this.extractor.setGateMargin(processed ? PROCESSED_GATE_MARGIN_DB : GATE_MARGIN_DB);
   }
 
   /** Feed a mono PCM block. Returns the updated live state. */

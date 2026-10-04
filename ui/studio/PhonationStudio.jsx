@@ -165,7 +165,7 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
           r = await A.current.end()
         }
       } else r = await A.current.end()
-      if (r.passed && r.quality?.reliable !== false) { setNextIdx((i) => (i + 1) % Math.max(list.length, 1)); afterPass() }
+      if (r.passed) { setNextIdx((i) => (i + 1) % Math.max(list.length, 1)); afterPass() }
       setPlays((n) => n + 1)
       setResult(r); setStage('result'); onResultRef.current?.(r, level)
     } catch (e) {
@@ -270,7 +270,7 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
       {stage === 'menu' && (
         <main className="st-menu">
           <h2 className="st-menuhead">Where to, {avatar.name}’s friend?</h2>
-          {processing && <p className="st-notice warn" role="alert">This device is changing the sound (noise, echo or volume processing). Results will be marked unreliable. Try another microphone or browser.</p>}
+          {processing && <p className="st-notice warn" role="alert">This device is changing the sound (noise, echo or volume processing). The game still works; for clinician-grade readings, a grown-up can try another microphone or browser.</p>}
           {calWarn.includes('unstable_background') && <p className="st-notice warn">We heard sound while measuring the room, so quiet voices may be missed. <button className="st-link" onClick={recalibrate}>Measure the room again</button></p>}
           <nav className="st-tabs" aria-label="Choose what to do">
             {[['quests', '🗺️ Story quests'], ['sounds', '🎵 Sounds'], ['friends', `${avatar.badge} Friends`]].map(([id, t]) => <button key={id} className={tab === id ? 'on' : ''} aria-pressed={tab === id} onClick={() => setTab(id)}>{t}</button>)}
@@ -325,13 +325,13 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
               <button className="st-btn ghost" onClick={finish}>I’m done</button>
             </>}
             {stage === 'result' && result && <>
-              {result.passed && result.quality?.reliable !== false && <div className="st-confetti" aria-hidden="true">{Array.from({ length: 16 }, (_, i) => <i key={i} style={{ left: `${(i * 6.3 + 3) % 100}%`, animationDelay: `${(i % 6) * 0.25}s`, background: ['#FF9B54', '#FFD08A', '#2FB8A6', '#60A5FA', '#F0604A'][i % 5] }} />)}</div>}
-              {result.quality?.reliable !== false && <div className="st-stars" aria-label={`${result.stars ?? 0} of 3 stars`}>{[0, 1, 2].map((i) => <b key={i} className={i < (result.stars ?? 0) ? 'on' : ''}>★</b>)}</div>}
-              {run && result.passed && result.quality?.reliable !== false && (() => { const c = CAST[run.quest.chapters[run.i].who] || CAST.narr; return <div className="st-speak"><i aria-hidden="true">{c.icon}</i><div><b>{c.name}</b><p>{c.cheer[run.i % 2]}</p></div></div> })()}
-              <h2>{result.quality?.reliable === false ? 'Hmm, I couldn’t hear that one clearly.' : result.passed ? 'Lovely. You did it.' : 'Good try. Let’s go again.'}</h2>
+              {result.passed && <div className="st-confetti" aria-hidden="true">{Array.from({ length: 16 }, (_, i) => <i key={i} style={{ left: `${(i * 6.3 + 3) % 100}%`, animationDelay: `${(i % 6) * 0.25}s`, background: ['#FF9B54', '#FFD08A', '#2FB8A6', '#60A5FA', '#F0604A'][i % 5] }} />)}</div>}
+              {(result.passed || result.quality?.reliable !== false) && <div className="st-stars" aria-label={`${result.stars ?? 0} of 3 stars`}>{[0, 1, 2].map((i) => <b key={i} className={i < (result.stars ?? 0) ? 'on' : ''}>★</b>)}</div>}
+              {run && result.passed && (() => { const c = CAST[run.quest.chapters[run.i].who] || CAST.narr; return <div className="st-speak"><i aria-hidden="true">{c.icon}</i><div><b>{c.name}</b><p>{c.cheer[run.i % 2]}</p></div></div> })()}
+              <h2>{!result.passed && result.quality?.reliable === false ? 'Hmm, I couldn’t hear that one clearly.' : result.passed ? 'Lovely. You did it.' : 'Good try. Let’s go again.'}</h2>
               {level.type === 'cv_syllable' && result.metrics?.syllableCount != null && <p className="st-heardn">I heard {result.metrics.syllableCount} of {level.reps} “{level.syllable}”{result.metrics.syllableCount < level.reps ? '. Try saying each one a little louder, with a tiny pause between.' : '.'}</p>}
-              {result.quality?.reliable === false && <><p>{adviceFor(result.quality).text}</p><p className="st-why">Why: {adviceFor(result.quality).why}{result.quality.noiseFloorDb != null && ` (room floor ${result.quality.noiseFloorDb} dB, your voice ${result.quality.snrDb ?? '–'} dB above it)`}</p></>}
-              <div className="st-actions">{run && result.passed && result.quality?.reliable !== false
+              {!result.passed && result.quality?.reliable === false && <><p>{adviceFor(result.quality).text}</p><p className="st-why">Why: {adviceFor(result.quality).why}{result.quality.noiseFloorDb != null && ` (room floor ${result.quality.noiseFloorDb} dB, your voice ${result.quality.snrDb ?? '–'} dB above it)`}</p></>}
+              <div className="st-actions">{run && result.passed
                 ? <><button className="st-btn big" onClick={nextChapter}>{run.i + 1 >= run.quest.chapters.length ? 'Finish the quest!' : 'Next chapter'}</button><button className="st-btn ghost" onClick={() => play(level)}>Again</button></>
                 : <><button className="st-btn" onClick={() => play(level)}>Again</button><button className="st-btn ghost" onClick={() => { setRun(null); setShowAll(false); setStage('menu') }}>Back to the map</button></>}</div>
             </>}

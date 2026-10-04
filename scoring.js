@@ -97,7 +97,10 @@ function scoreSustained(level, ctx) {
 function nucleiFor(level, ctx) {
   const { frames, hopSec, noise } = ctx;
   const flags = voicedFlags(frames, 3);
-  const nuclei = findNuclei(frames, flags, hopSec, noise.db, { minSnrDb: level.minSnrDb });
+  // Device-side gain/noise processing pumps the measured floor up and flattens dips between syllables, so the level
+  // margins shrink; a frame still has to be periodic (YIN) to count, so noise alone cannot create a syllable.
+  const relaxed = ctx.processed ? { minSnrDb: Math.min(level.minSnrDb, 4), minDipDb: 1.5 } : { minSnrDb: level.minSnrDb };
+  const nuclei = findNuclei(frames, flags, hopSec, noise.db, relaxed);
   return { flags, nuclei };
 }
 
@@ -273,7 +276,9 @@ function qualityOf(trial, voicedFrames) {
 export function scoreTrial(level, trial) {
   const scorer = SCORERS[level.type];
   if (!scorer) throw new Error(`No scorer for type "${level.type}"`);
-  const ctx = { frames: trial.frames, hopSec: trial.hopSec, noise: trial.noise, t0: trial.startT };
+  const ci = trial.captureInfo || {};
+  const processed = !!(ci.autoGainControl || ci.noiseSuppression || ci.echoCancellation);
+  const ctx = { frames: trial.frames, hopSec: trial.hopSec, noise: trial.noise, t0: trial.startT, processed };
   const r = scorer(level, ctx);
   const quality = qualityOf(trial, r.voicedFrames);
   const durationSec = trial.frames.length ? trial.frames[trial.frames.length - 1].t - trial.startT : 0;
