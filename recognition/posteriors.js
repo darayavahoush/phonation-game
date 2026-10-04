@@ -8,20 +8,10 @@
  */
 
 const SPECIAL = /^(<.*>|\||\s*)$/; // <pad> <s> </s> <unk> | and blanks
-const CONSONANT = /^[pbtdkgɡmnŋfvszʃʒθðhlɹrjwʔçxɣɾʧʤ]/;
+const CONSONANT = /^[pbtdkgɡmnŋfvszʃʒθðhlɹrjwʔçxɣɾɻɫɬʧʤ]/;
 
 export const isSpecial = (l) => SPECIAL.test(String(l));
 export const isConsonantLabel = (l) => !isSpecial(l) && CONSONANT.test(String(l));
-
-/** Candidate IPA labels per orthographic letter. Verified against the real vocab at runtime. */
-export const PHONE_CANDIDATES = Object.freeze({
-  b: ['b'], d: ['d'], g: ['ɡ', 'g'], p: ['p'], t: ['t'], k: ['k'], m: ['m'], n: ['n'],
-  a: ['ɑ', 'a', 'ɑː', 'aː', 'ɐ'],
-  e: ['e', 'ɛ', 'eː', 'eɪ'],
-  i: ['i', 'iː', 'ɪ'],
-  o: ['o', 'oʊ', 'ɔ', 'oː'],
-  u: ['u', 'uː', 'ʊ'],
-});
 
 export const THRESHOLDS = Object.freeze({
   LLR_MARGIN: 0.7, // ln(2): target peak at least ~2x the best competitor
@@ -77,37 +67,73 @@ export function basePhone(label) {
     .replace(/[0-9ːˑʰʲʷʼˈˌ.]/g, '');
 }
 
-/** Base phones that count as the same sound as an orthographic letter. */
-const FAMILY = Object.freeze({
-  b: ['b'], d: ['d'], g: ['ɡ', 'g'], p: ['p'], t: ['t'], k: ['k'], m: ['m'], n: ['n'],
+/**
+ * Base phones that count as the same sound as an orthographic unit. Units are single letters or
+ * the digraphs sh zh th dh ng ch. (c and q read as k; y as the glide /j/; j as /dʒ/.)
+ */
+const PHONES = Object.freeze({
+  // stops, affricates
+  b: ['b'], p: ['p'], d: ['d'], t: ['t'], k: ['k'], c: ['k'], q: ['k'], g: ['ɡ', 'g'],
+  ch: ['tʃ', 'ʧ'], j: ['dʒ', 'ʤ'],
+  // nasals
+  m: ['m'], n: ['n'], ng: ['ŋ'],
+  // fricatives
+  f: ['f'], v: ['v'], s: ['s'], z: ['z'], sh: ['ʃ'], zh: ['ʒ'], th: ['θ'], dh: ['ð'], h: ['h'],
+  // liquids and glides
+  l: ['l', 'ɫ'], r: ['ɹ', 'r', 'ɾ', 'ɻ'], y: ['j'], w: ['w'],
+  // vowels
   a: ['a', 'ɑ', 'ɐ'], e: ['e', 'ɛ', 'eɪ'], i: ['i', 'ɪ'], o: ['o', 'ɔ', 'oʊ'], u: ['u', 'ʊ'],
 });
 
-/** Stop pairs that differ (mainly) in voicing; place of articulation is the same. */
-export const VOICING_TWIN = Object.freeze({ p: 'b', b: 'p', t: 'd', d: 't', k: 'g', g: 'k' });
+/** Pairs that differ (mainly) in voicing: same place and manner, voiced vs voiceless. */
+export const VOICING_TWIN = Object.freeze({
+  p: 'b', b: 'p', t: 'd', d: 't', k: 'g', g: 'k', c: 'g', q: 'g',
+  f: 'v', v: 'f', s: 'z', z: 's', sh: 'zh', zh: 'sh', th: 'dh', dh: 'th', ch: 'j', j: 'ch',
+});
 
-function idsFor(letter, vocab) {
-  const fam = new Set(FAMILY[letter] || []);
+const DIGRAPHS = ['sh', 'zh', 'th', 'dh', 'ng', 'ch'];
+const VOWEL_UNITS = 'aeiou';
+
+/** Split a syllable like "sha" or "thub" into orthographic units. Unknown letters are dropped. */
+export function syllableUnits(syllable) {
+  const s = String(syllable || '').toLowerCase().replace(/[^a-z]/g, '');
+  const out = [];
+  for (let i = 0; i < s.length;) {
+    const two = s.slice(i, i + 2);
+    if (DIGRAPHS.includes(two)) { out.push(two); i += 2; continue; }
+    if (PHONES[s[i]]) out.push(s[i]);
+    i += 1;
+  }
+  return out;
+}
+
+function idsFor(unit, vocab) {
+  const fam = new Set(PHONES[unit] || []);
   const ids = [];
   vocab.forEach((l, i) => { if (l != null && !isSpecial(l) && fam.has(basePhone(l))) ids.push(i); });
   return ids;
 }
 
-/** Map a syllable like "ba" to the vocab labels that could represent its consonant and vowel. */
+/**
+ * Map a syllable to the vocab labels for its onset consonant, vowel and (optional) final consonant,
+ * e.g. "ba", "shi", "ap", "thum". Only the first consonant of a cluster is scored ("bra" -> b + a).
+ */
 export function resolveTargets(syllable, vocab) {
-  const s = String(syllable || '').toLowerCase();
-  const letters = [...s];
-  const consonantLetter = letters.find((c) => 'bdgptkmn'.includes(c)) || null;
-  const vowelLetter = [...letters].reverse().find((c) => 'aeiou'.includes(c)) || null;
-  const find = (letter) => {
-    if (!letter) return null;
-    const ids = idsFor(letter, vocab);
-    return { letter, labels: ids.map((i) => vocab[i]), ids };
+  const units = syllableUnits(syllable);
+  const vIdx = units.findIndex((u) => VOWEL_UNITS.includes(u));
+  const onsetUnit = units.slice(0, vIdx < 0 ? units.length : vIdx).find(() => true) || null;
+  const vowelUnit = vIdx >= 0 ? units[vIdx] : null;
+  const codaUnit = vIdx >= 0 ? units.slice(vIdx + 1).find((u) => !VOWEL_UNITS.includes(u)) || null : null;
+  const find = (unit) => {
+    if (!unit) return null;
+    const ids = idsFor(unit, vocab);
+    return { letter: unit, labels: ids.map((i) => vocab[i]), ids };
   };
-  const consonant = find(consonantLetter);
-  const vowel = find(vowelLetter);
-  const missing = [consonant, vowel].filter((x) => x && x.labels.length === 0).map((x) => x.letter);
-  return { consonant, vowel, missing };
+  const consonant = find(onsetUnit);
+  const vowel = find(vowelUnit);
+  const coda = find(codaUnit);
+  const missing = [consonant, vowel, coda].filter((x) => x && x.labels.length === 0).map((x) => x.letter);
+  return { consonant, vowel, coda, missing };
 }
 
 function peakOf(post, ids) {
@@ -188,11 +214,16 @@ export function scorePosteriors(post, vocabIn, syllable) {
   if (targets.missing.length) {
     return { ok: false, reason: 'target_labels_not_in_vocab', missing: targets.missing, heard };
   }
-  const out = { ok: true, heard, consonant: null, vowel: null, thresholds: THRESHOLDS };
+  const out = { ok: true, heard, consonant: null, vowel: null, coda: null, thresholds: THRESHOLDS };
   if (targets.consonant) {
     out.consonant = evidence(post, vocab, targets.consonant, isConsonantLabel);
     const pv = placeAndVoicing(post, vocab, targets.consonant);
     if (pv) Object.assign(out.consonant, pv);
+  }
+  if (targets.coda) {
+    out.coda = evidence(post, vocab, targets.coda, isConsonantLabel);
+    const pv = placeAndVoicing(post, vocab, targets.coda);
+    if (pv) Object.assign(out.coda, pv);
   }
   if (targets.vowel) out.vowel = evidence(post, vocab, targets.vowel, (l) => !isConsonantLabel(l));
   return out;

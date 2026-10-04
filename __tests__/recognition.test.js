@@ -45,8 +45,10 @@ test('resolveTargets maps syllables to vocab labels and reports what is missing'
   assert.deepEqual(r.consonant.labels, ['b']);
   assert.deepEqual(r.vowel.labels, ['ɑ']);
   assert.deepEqual(r.missing, []);
-  const none = resolveTargets('fa', ['<pad>', 'b', 'ɑ']); // 'f' is not an orthographic target we know
+  const none = resolveTargets('xa', ['<pad>', 'b', 'ɑ']); // 'x' is not a unit we map
   assert.equal(none.consonant, null);
+  const f = resolveTargets('fa', ['<pad>', 'b', 'ɑ']); // 'f' is known but missing from this vocab
+  assert.deepEqual(f.missing, ['f']);
   const gap = resolveTargets('ba', ['<pad>', 'p', 'ɑ']);
   assert.deepEqual(gap.missing, ['b']);
 });
@@ -335,4 +337,49 @@ test('a different place (k heard for t) is still wrong, not forgiven as voicing'
   ];
   const s = scorePosteriors(post, V, 'ta');
   assert.equal(s.consonant.place, 'wrong');
+});
+
+test('digraph and fricative onsets resolve: sha, tha, cha, nga-style codas, vowel-only', () => {
+  const V = ['<pad>', 'ʃ', 'ʒ', 'θ', 'ð', 'tʃ', 'dʒ', 'ŋ', 'f', 'v', 's', 'z', 'ɹ', 'j', 'l', 'ɑ', 'i', 'ɪ', 'u2', 'ʊ', 'e', 'ɛ', 'o', 'ɔ', 'm', 'p'];
+  assert.deepEqual(resolveTargets('sha', V).consonant.labels, ['ʃ']);
+  assert.deepEqual(resolveTargets('tha', V).consonant.labels, ['θ']);
+  assert.deepEqual(resolveTargets('cha', V).consonant.labels, ['tʃ']);
+  assert.deepEqual(resolveTargets('ja', V).consonant.labels, ['dʒ']);
+  assert.deepEqual(resolveTargets('ra', V).consonant.labels, ['ɹ']);
+  assert.deepEqual(resolveTargets('ya', V).consonant.labels, ['j']);
+  assert.deepEqual(resolveTargets('ang', V).coda.labels, ['ŋ']);
+  assert.deepEqual(resolveTargets('im', V).coda.labels, ['m']);
+  assert.equal(resolveTargets('i', V).consonant, null);
+  assert.deepEqual(resolveTargets('bi', ['b', 'i', 'ɪ']).vowel.labels, ['i', 'ɪ']);
+  assert.deepEqual(resolveTargets('bu', ['b', 'u', 'ʊ']).vowel.labels, ['u', 'ʊ']);
+  assert.deepEqual(resolveTargets('bo', ['b', 'o', 'ɔ']).vowel.labels, ['o', 'ɔ']);
+  assert.deepEqual(resolveTargets('be', ['b', 'e', 'ɛ']).vowel.labels, ['e', 'ɛ']);
+});
+
+test('s vs z and f vs v behave like p vs b: place ok, voicing separate', () => {
+  const V = ['<pad>', 's', 'z', 'f', 'a'];
+  const post = [Float32Array.from([0, 0.5, 0.45, 0, 0]), Float32Array.from([0, 0, 0, 0, 0.9])];
+  const s = scorePosteriors(post, V, 'sa');
+  assert.equal(s.consonant.place, 'ok');
+  assert.equal(s.consonant.voicing, 'unsure');
+  const wrong = scorePosteriors([Float32Array.from([0, 0.05, 0.05, 0.9, 0]), Float32Array.from([0, 0, 0, 0, 0.9])], V, 'sa');
+  assert.equal(wrong.consonant.place, 'wrong');
+});
+
+test('all five vowels are scored, and a wrong vowel is caught', () => {
+  const V = ['<pad>', 'b', 'a', 'e', 'i', 'o', 'u'];
+  const frames = (c, v) => {
+    const mk = (idx, pk) => { const r = new Float32Array(V.length); r[idx] = pk; return r; };
+    return [mk(1, 0.9), mk(V.indexOf(v), 0.85)];
+  };
+  for (const v of 'aeiou') assert.equal(scorePosteriors(frames('b', v), V, 'b' + v).vowel.verdict, 'target_dominant');
+  assert.equal(scorePosteriors(frames('b', 'i'), V, 'bu').vowel.verdict, 'competitor_dominant');
+});
+
+test('final consonant is scored too', () => {
+  const V = ['<pad>', 'a', 'm', 'n'];
+  const mk = (idx, pk) => { const r = new Float32Array(V.length); r[idx] = pk; return r; };
+  const s = scorePosteriors([mk(1, 0.9), mk(2, 0.8)], V, 'am');
+  assert.equal(s.coda.verdict, 'target_dominant');
+  assert.equal(s.consonant, null);
 });

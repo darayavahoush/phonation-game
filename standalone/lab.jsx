@@ -10,7 +10,9 @@ import { PhonationEngine, TransformersPhonemeRecognizer, MockRecognizer } from '
 
 const TRANSFORMERS_URL = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.0'
 const MODEL_ID = 'onnx-community/wav2vec2-lv-60-espeak-cv-ft-ONNX'
-const SYLLABLES = ['ba', 'pa', 'da', 'ta', 'ga', 'ka', 'ma', 'na']
+// Every consonant and vowel the scorer knows. Pick one of each; the syllable is consonant + vowel (e.g. sha, bi, thu).
+const CONSONANTS = ['b', 'p', 'd', 't', 'g', 'k', 'm', 'n', 'f', 'v', 's', 'z', 'sh', 'zh', 'th', 'dh', 'h', 'l', 'r', 'y', 'w', 'ch', 'j']
+const VOWELS = ['a', 'e', 'i', 'o', 'u']
 const mock = new URLSearchParams(location.search).get('mock') === '1'
 const VERDICT = { target_dominant: '✅ target', competitor_dominant: '❌ other sound', ambiguous: '🤔 unsure', weak_evidence: '… too weak' }
 
@@ -25,7 +27,9 @@ function Lab() {
   const rec = useRef(null), eng = useRef(null)
   const [model, setModel] = useState({ state: 'idle', msg: '' })
   const [mic, setMic] = useState('off') // off | calibrating | ready | recording | thinking
-  const [syl, setSyl] = useState('ba')
+  const [cons, setCons] = useState('b')
+  const [vow, setVow] = useState('a')
+  const syl = cons + vow
   const [profile, setProfile] = useState('child')
   const [rows, setRows] = useState([])
   const [err, setErr] = useState('')
@@ -113,7 +117,10 @@ function Lab() {
 
       <section style={{ border: '1px solid #ddd', borderRadius: 12, padding: 12, margin: '12px 0' }}>
         <b>3. Say one sound</b><br />
-        <div style={{ margin: '8px 0' }}>{SYLLABLES.map((s) => <button key={s} onClick={() => setSyl(s)} disabled={mic === 'recording' || mic === 'thinking'} style={{ marginRight: 6, fontWeight: s === syl ? 700 : 400, outline: s === syl ? '2px solid #f90' : 'none' }}>{s}</button>)}</div>
+        <div style={{ margin: '8px 0' }}>
+          <div>consonant: {CONSONANTS.map((c) => <button key={c} onClick={() => setCons(c)} disabled={mic === 'recording' || mic === 'thinking'} style={{ marginRight: 4, marginBottom: 4, fontWeight: c === cons ? 700 : 400, outline: c === cons ? '2px solid #f90' : 'none' }}>{c}</button>)}</div>
+          <div>vowel: {VOWELS.map((v) => <button key={v} onClick={() => setVow(v)} disabled={mic === 'recording' || mic === 'thinking'} style={{ marginRight: 4, fontWeight: v === vow ? 700 : 400, outline: v === vow ? '2px solid #f90' : 'none' }}>{v}</button>)}</div>
+        </div>
         {mic === 'recording'
           ? <button style={{ background: '#f55', color: '#fff' }} onClick={stopAndRecognize}>■ Stop and check “{syl}”</button>
           : <button disabled={!ready || mic !== 'ready'} onClick={record}>● Record “{syl}” (say it once, then press Stop)</button>}
