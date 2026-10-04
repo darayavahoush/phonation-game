@@ -65,6 +65,24 @@ export function ctcGreedy(post, vocab) {
   return out;
 }
 
+/**
+ * Reduce a vocab label to its base phone: drop tone digits (ɑ5), length (aː), aspiration/
+ * palatalisation/labialisation (tʰ, kʲ), stress and combining marks. The espeak vocab holds many
+ * such variants of one sound; they must all count as the SAME phone, not as competitors.
+ */
+export function basePhone(label) {
+  return String(label)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f\u02e5-\u02e9]/g, '') // combining marks, tone letters
+    .replace(/[0-9ːˑʰʲʷʼˈˌ.]/g, '');
+}
+
+/** Base phones that count as the same sound as an orthographic letter. */
+const FAMILY = Object.freeze({
+  b: ['b'], d: ['d'], g: ['ɡ', 'g'], p: ['p'], t: ['t'], k: ['k'], m: ['m'], n: ['n'],
+  a: ['a', 'ɑ', 'ɐ'], e: ['e', 'ɛ', 'eɪ'], i: ['i', 'ɪ'], o: ['o', 'ɔ', 'oʊ'], u: ['u', 'ʊ'],
+});
+
 /** Map a syllable like "ba" to the vocab labels that could represent its consonant and vowel. */
 export function resolveTargets(syllable, vocab) {
   const s = String(syllable || '').toLowerCase();
@@ -73,8 +91,10 @@ export function resolveTargets(syllable, vocab) {
   const vowelLetter = [...letters].reverse().find((c) => 'aeiou'.includes(c)) || null;
   const find = (letter) => {
     if (!letter) return null;
-    const labels = (PHONE_CANDIDATES[letter] || []).filter((l) => vocab.includes(l));
-    return { letter, labels, ids: labels.map((l) => vocab.indexOf(l)) };
+    const fam = new Set(FAMILY[letter] || []);
+    const ids = [];
+    vocab.forEach((l, i) => { if (l != null && !isSpecial(l) && fam.has(basePhone(l))) ids.push(i); });
+    return { letter, labels: ids.map((i) => vocab[i]), ids };
   };
   const consonant = find(consonantLetter);
   const vowel = find(vowelLetter);

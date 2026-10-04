@@ -301,3 +301,16 @@ test('embedded worklet source matches phonation-worklet.js (no drift) and regist
   assert.equal(WORKLET_SOURCE, file);
   assert.match(WORKLET_SOURCE, /registerProcessor\('phonation-capture'/);
 });
+
+test('tone-digit and length variants of the target vowel are the target, not a competitor', () => {
+  const V = ['<pad>', 'k', 'g', 'ɑ5', 'aː', 'a', 'ɔ'];
+  const r = resolveTargets('ka', V);
+  assert.deepEqual(r.vowel.labels, ['ɑ5', 'aː', 'a']);
+  const T = 4, post = [];
+  for (let t = 0; t < T; t++) post.push(Float32Array.from([0.05, 0, 0, 0, 0, 0, 0]));
+  post[1] = Float32Array.from([0, 0.9, 0, 0, 0, 0, 0]);          // k
+  post[2] = Float32Array.from([0, 0, 0, 0.8, 0.1, 0.05, 0.05]);  // ɑ5
+  const s = scorePosteriors(post, V, 'ka');
+  assert.equal(s.vowel.verdict, 'target_dominant');
+  assert.equal(s.consonant.verdict, 'target_dominant');
+});
