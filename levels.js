@@ -23,6 +23,6 @@ export const STARTER_LEVELS = [
   // 4. Pitch and loudness control
   { id: 'pg-up-4', type: T.PITCH_GLIDE, direction: 'up', minRangeSemitones: 4, label: 'Slide up' },
   { id: 'pg-down-4', type: T.PITCH_GLIDE, direction: 'down', minRangeSemitones: 4, label: 'Slide down' },
-  { id: 'lr-up-10', type: T.LOUDNESS_RAMP, direction: 'up', minRangeDb: 10, label: 'Quiet to loud' },
-  { id: 'lr-down-10', type: T.LOUDNESS_RAMP, direction: 'down', minRangeDb: 10, label: 'Loud to quiet' },
+  { id: 'lr-up-6', type: T.LOUDNESS_RAMP, direction: 'up', minRangeDb: 6, label: 'Grow the sound' },
+  { id: 'lr-down-6', type: T.LOUDNESS_RAMP, direction: 'down', minRangeDb: 6, label: 'Shrink the sound' },
 ];

@@ -16,7 +16,7 @@ const HOWTO = {
   cv_syllable: ['Take a breath.', 'Say the sound short, then stop and rest.', 'Every pop lights up a dot!'],
   syllable_train: ['Take a breath.', 'Say it again and again, like a drum.', 'Keep it nice and steady.'],
   pitch_glide: ['Start with a low voice.', 'Slide up high, like a slide at the park.', 'Watch the glowing line follow you!'],
-  loudness_ramp: ['Start super quiet, like a mouse.', 'Get louder and louder, slowly.', 'Lumi grows as you get louder!'],
+  loudness_ramp: ['Make a small, soft sound.', 'Make it a bit bigger, like blowing up a balloon.', 'Lumi grows as your sound grows!'],
   default: ['Take a big breath.', 'Make your sound.', 'Watch Lumi glow!'],
 }
 // What to tell the child, by the engine's own quality flag (first match wins). Wrong advice is worse than none:
@@ -286,7 +286,7 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
             <label className="st-own">Or type your own <input value={sound} maxLength={6} onChange={(e) => setSound(cleanSound(e.target.value))} placeholder="e.g. bo" aria-label="Type your own sound" /></label>
             <div className="st-modes" role="group" aria-label="How to say it">{MODES.map((m) => <button key={m.id} className={mode === m.id ? 'on' : ''} aria-pressed={mode === m.id} onClick={() => setMode(m.id)}><i>{m.icon}</i><b>{m.label}</b><small>{m.hint}</small></button>)}</div>
             <div className="st-actions"><button className="st-btn big" disabled={!cleanSound(sound)} onClick={startFree}>Play “{cleanSound(sound) || '…'}”</button></div>
-            <button className="st-link" onClick={() => setShowAll((v) => !v)}>{showAll ? 'Hide more games' : 'More games: slides and loud/quiet'}</button>
+            <button className="st-link" onClick={() => setShowAll((v) => !v)}>{showAll ? 'Hide more games' : 'More games: slides and growing sounds'}</button>
             {showAll && Object.entries(groups).filter(([t]) => t === 'pitch_glide' || t === 'loudness_ramp').map(([type, ls]) => (
               <div key={type} className="st-levels">{ls.map((l, i) => { const name = levelTitle(l, i, ls.length); return <button key={l.id ?? name + i} className="st-level" onClick={() => choose(l, name)}><i className="st-ico" aria-hidden="true">{ICON[l.type] ?? '🔆'}</i><strong>{name}</strong><span>{levelPrompt(l)}</span></button> })}</div>))}
           </section>}

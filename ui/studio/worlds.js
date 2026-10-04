@@ -40,7 +40,7 @@ export function makeLevel(sound, mode = 'pop', extra = {}) {
 }
 
 export const GLIDE = (dir) => ({ id: `glide-${dir}`, type: 'pitch_glide', direction: dir, minRangeSemitones: 4, label: dir === 'up' ? 'Slide up' : 'Slide down' })
-export const RAMP = (dir) => ({ id: `ramp-${dir}`, type: 'loudness_ramp', direction: dir, minRangeDb: 10, label: dir === 'up' ? 'Quiet to loud' : 'Loud to quiet' })
+export const RAMP = (dir) => ({ id: `ramp-${dir}`, type: 'loudness_ramp', direction: dir, minRangeDb: 6, label: dir === 'up' ? 'Grow the sound' : 'Shrink the sound' })
 
 // ---------- The Saga: 10 realms x 5 chapters = 50 chapters, one continuing story ----------
 // who = speaking character. twist = plot turn (the sound gets swapped for a surprise one). One idea per chapter: a sound or a slide.
@@ -58,7 +58,7 @@ export const QUESTS = [
     C('skarn', '*snore* Mmm? Who tickles my nose? Do it again, little one!', { sound: 'pa', mode: 'pop' }),
     C('gnorb', 'Psst! I’m Gnorbert. Beat the drum so Skarn wakes up happy! (I may have hidden his socks.)', { sound: 'ba', mode: 'train' }),
     C('skarn', 'Aaah, a yawn is coming. Yawn WITH me!', { sound: 'a', mode: 'hold', twist: 'Gnorbert swapped the dragon’s yawn for a sneeze! Quick, say the new word!' }),
-    C('skarn', 'I’m awake! The Hush stole my roar. Start soft, then get LOUDER, and I’ll teach you my secret!', { ramp: 'up' }),
+    C('skarn', 'I’m awake! The Hush stole my roar. Hold a big “aaah” for me, and I’ll teach you my secret!', { sound: 'a', mode: 'hold' }),
   ] },
   { id: 'star', world: 'sea', title: '2. The Lost Star', icon: '⭐', blurb: 'A little star fell in the sea. Bring it home!', prize: { icon: '🐚', name: 'Star Shell' }, chapters: [
     C('brine', 'Ahoy! Captain Brine here, eight arms and no clue. A star fell in our sea! Call “ma” across the waves!', { sound: 'ma', mode: 'pop' }),
@@ -77,7 +77,7 @@ export const QUESTS = [
   { id: 'potion', world: 'forest', title: '4. The Giggle Potion', icon: '🧪', blurb: 'The owl lost his giggle. Brew it back!', prize: { icon: '🦉', name: 'Owl Feather' }, chapters: [
     C('hoot', 'Hoo hoo! Professor Hoot. I lost my giggle! Stir the cauldron: “wa wa wa”!', { sound: 'wa', mode: 'train' }),
     C('bram', 'Grrr, I’m Bramble, I’m not scary, I swear. Add one “pa” at a time.', { sound: 'pa', mode: 'pop' }),
-    C('hoot', 'It bubbles! Make a quiet bubble that gets BIG!', { ramp: 'up' }),
+    C('hoot', 'It bubbles! Blow one long bubble: ooooo!', { sound: 'o', mode: 'hold' }),
     C('gnorb', 'It was me who took the giggle! The Hush made me. I’m SO sorry. Say “ha ha” to fix it!', { sound: 'ha', mode: 'pop', twist: 'Plot twist! Gnorbert was working for the Hush… but he’s switching sides!' }),
     C('hoot', 'The giggle is back! Hold “eeee” like a magic whistle to seal it.', { sound: 'ee', mode: 'hold' }),
   ] },
@@ -93,21 +93,21 @@ export const QUESTS = [
     C('hoot', 'Tiny footprints! Whisper “ka ka ka” to follow them.', { sound: 'ka', mode: 'train' }),
     C('pip', 'Baa! I saw a shadow! Slide up the tree to look!', { glide: 'up' }),
     C('gnorb', 'It wasn’t me this time, promise! Pop “bo” for the secret knock.', { sound: 'bo', mode: 'pop', twist: 'The thief left a trick lock! Say the surprise sound to open it!' }),
-    C('bram', 'The thief was… the Hush’s fog-bees! They’re building a fortress. We must hurry!', { ramp: 'up' }),
+    C('bram', 'The thief was… the Hush’s fog-bees! They’re building a fortress. We must hurry! Hold “aaah” to light the lantern!', { sound: 'a', mode: 'hold' }),
   ] },
   { id: 'clank', world: 'clouds', title: '7. The Clockwork Castle', icon: '🏰', blurb: 'Sir Clank’s gears are stuck. Wind him up with your voice!', prize: { icon: '⚙️', name: 'Golden Gear' }, chapters: [
     C('clank', 'BEEP. Sir Clank, knight of the sky. My gears are silent. Tick-tock with “ti ti ti”!', { sound: 'ti', mode: 'train' }),
     C('zeph', 'Wind the great clock: hold “ooo” as it turns.', { sound: 'oo', mode: 'hold' }),
     C('clank', 'WHIRR! Pop “bee”, one at a time, for each gear!', { sound: 'bee', mode: 'pop' }),
     C('zed', 'I’m Zed, the time-turtle. Slooowly slide down… time bends for those who are patient.', { glide: 'down', twist: 'Time glitched! The words changed. Say the new sound!' }),
-    C('clank', 'The clock chimes: the Hush’s fortress rises at dawn. Get LOUD to ring the alarm bell!', { ramp: 'up' }),
+    C('clank', 'The clock chimes: the Hush’s fortress rises at dawn. Hum a long “mmm” to ring the alarm bell!', { sound: 'mmm', mode: 'hold' }),
   ] },
   { id: 'library', world: 'sea', title: '8. The Sunken Library', icon: '📚', blurb: 'The Hush hid its secret in the deep.', prize: { icon: '📚', name: 'Wise Book' }, chapters: [
     C('hoot', 'Books sleep underwater, and they only wake to “shhh”… no wait, to “moo”! Pop it!', { sound: 'moo', mode: 'pop' }),
     C('brine', 'Octo-librarian reporting! Say “na na na” to flip the pages.', { sound: 'na', mode: 'train' }),
     C('oona', 'Dive deep. Slide your voice all the way down…', { glide: 'down' }),
     C('mira', 'This book is written in mirror words! Hold “eee” and the letters turn around.', { sound: 'ee', mode: 'hold', twist: 'The pages shuffled! Say the surprise sound to unscramble them!' }),
-    C('hoot', 'It says: “The Hush is only lonely. It stole sounds because nobody ever listened to it.” Whisper then LOUD: reply to the book!', { ramp: 'up' }),
+    C('hoot', 'It says: “The Hush is only lonely. It stole sounds because nobody ever listened to it.” Say a long “ooo” to reply to the book!', { sound: 'oo', mode: 'hold' }),
   ] },
   { id: 'fortress', world: 'volcano', title: '9. The Hush Fortress', icon: '🌫️', blurb: 'Grumblor the Hush is hiding behind a wall of silence.', prize: { icon: '🛡️', name: 'Brave Badge' }, chapters: [
     C('skarn', 'Hop on my back! The wall of silence is thick. Break it with “pa pa pa”!', { sound: 'pa', mode: 'train' }),
@@ -121,7 +121,7 @@ export const QUESTS = [
     C('pip', 'Baaa! Everyone’s here! Sing “la la la” with me!', { sound: 'la', mode: 'train' }),
     C('zeph', 'The whole kingdom joins in: slide up, up, up to the stars!', { glide: 'up' }),
     C('echo', 'I’ll carry your voice to every corner! Hold one long note!', { sound: 'o', mode: 'hold', twist: 'The finale has a secret twist! Say the surprise sound!' }),
-    C('narr', 'And now the loudest, happiest sound of all. Quiet… quieter… then ROAR with joy!', { ramp: 'up' }),
+    C('narr', 'And now the happiest sound of all. Take a big breath and hold “aaah” with joy!', { sound: 'a', mode: 'hold' }),
   ] },
 ]
 
