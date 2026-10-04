@@ -38,8 +38,13 @@ function Lab() {
     try {
       setModel({ state: 'loading', msg: 'starting…' })
       const transformers = await import(/* @vite-ignore */ TRANSFORMERS_URL) // loaded at runtime so the game build carries no ML dependency
+      // This model repo ships vocab.json but no tokenizer.json, so fetch the vocabulary ourselves and pass it in.
+      setModel({ state: 'loading', msg: 'fetching vocabulary…' })
+      const vr = await fetch(`https://huggingface.co/${MODEL_ID}/resolve/main/vocab.json`)
+      if (!vr.ok) throw new Error(`vocab.json: HTTP ${vr.status}`)
+      const vocab = await vr.json()
       rec.current = new TransformersPhonemeRecognizer({
-        transformers, modelId: MODEL_ID, dtype: 'q8',
+        transformers, modelId: MODEL_ID, dtype: 'q8', vocab,
         onProgress: (p) => {
           if (p.status === 'progress' && p.file) { files.current[p.file] = p; const f = Object.values(files.current); const loaded = f.reduce((a, x) => a + (x.loaded || 0), 0), total = f.reduce((a, x) => a + (x.total || 0), 0); setModel({ state: 'loading', msg: `downloading ${(loaded / 1e6).toFixed(0)} / ${(total / 1e6).toFixed(0)} MB` }) }
         },
