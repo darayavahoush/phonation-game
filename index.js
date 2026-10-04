@@ -5,6 +5,7 @@ export { LEVEL_TYPES, MANNERS, mannerOf, validateLevel, normalizeLevel } from '.
 export { scoreTrial, SCHEMA_VERSION, QUALITY } from './scoring.js';
 export { STARTER_LEVELS } from './levels.js';
 export { NullRecognizer, MockRecognizer, TransformersPhonemeRecognizer, resampleLinear, MODEL_SAMPLE_RATE } from './recognition/recognizers.js';
+export { stopVoicingCue, decideConsonant, VOICING_CUE } from './recognition/voicingCue.js';
 export { scorePosteriors, resolveTargets, ctcGreedy, softmaxRows, normalizeVocab, THRESHOLDS } from './recognition/posteriors.js';
 export { summarizeForReport, buildDraftPrompt } from './report/summary.js';
 export { NOISE_FLOOR, estimateFloor, NoiseTracker, primaryIssueOf } from './noiseFloor.js';

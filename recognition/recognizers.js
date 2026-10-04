@@ -1,4 +1,5 @@
 import { scorePosteriors, softmaxRows, normalizeVocab, ctcGreedy } from './posteriors.js';
+import { stopVoicingCue, decideConsonant } from './voicingCue.js';
 
 export const MODEL_SAMPLE_RATE = 16000;
 
@@ -109,6 +110,7 @@ export class TransformersPhonemeRecognizer {
 
     await this.ready();
     let a = resampleLinear(audio, sampleRate, MODEL_SAMPLE_RATE);
+    const raw16k = a; // acoustic cues use the un-denoised audio
     if (this.preprocess) a = await this.preprocess(a, MODEL_SAMPLE_RATE);
     const inputs = await this.processor(a); // Wav2Vec2 feature extractor normalises internally
     const out = await this.model(inputs);
@@ -121,6 +123,11 @@ export class TransformersPhonemeRecognizer {
     const score = syllableLevel
       ? scorePosteriors(post, this.vocabArr, level.syllable)
       : { ok: true, heard: ctcGreedy(post, this.vocabArr) };
+    if (syllableLevel && score.ok && score.consonant) {
+      const cue = stopVoicingCue(raw16k, MODEL_SAMPLE_RATE);
+      score.voicingCue = cue;
+      Object.assign(score.consonant, decideConsonant(score.consonant, cue, score.consonant.target));
+    }
     return { ...base, ...score, audioSec: Math.round(audioSec * 100) / 100 };
   }
 }
