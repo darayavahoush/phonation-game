@@ -211,3 +211,17 @@
 .st-map figcaption b { color: #c9a8ff; }
 .st-node.open:hover > circle:nth-of-type(3), .st-node.open:focus-visible > circle:nth-of-type(3) { stroke: #fff; }
 .st-node.open { transition: transform .15s; } .st-node.open:active { opacity: .85; }
+
+/* ---- v7: a living map ---- */
+.st-map .st-bob { animation: st-bobk 3.4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; } @keyframes st-bobk { 50% { transform: translateY(-5px); } }
+.st-map .st-flap { animation: st-flapk .45s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: center; } @keyframes st-flapk { to { transform: scaleY(.35); } }
+.st-map .st-wing { animation: st-wingk .3s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: center; } @keyframes st-wingk { to { transform: scaleX(.3); } }
+.st-map .st-twinkle { animation: st-twk 2.4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; } @keyframes st-twk { 50% { opacity: .2; transform: scale(.55); } }
+.st-map .st-rise { animation: st-risek 4s ease-in infinite; } @keyframes st-risek { 0% { transform: translateY(0); opacity: 0; } 15% { opacity: .9; } 100% { transform: translateY(-90px); opacity: 0; } }
+.st-map .st-spout { animation: st-risek 1.6s ease-out infinite; }
+.st-map .st-float { animation: st-floatk 7s ease-in-out infinite alternate; } @keyframes st-floatk { to { transform: translate(18px, -20px); } }
+.st-map .st-drift { animation: st-driftk 9s ease-in-out infinite alternate; } @keyframes st-driftk { to { transform: translateX(16px); } }
+.st-map .st-glow { animation: st-glowk 2.2s ease-in-out infinite alternate; } @keyframes st-glowk { from { stroke-opacity: .45; } to { stroke-opacity: 1; } }
+.st-map .st-smoke { animation: st-smokek 4.2s ease-out infinite; transform-box: fill-box; transform-origin: center; } @keyframes st-smokek { from { transform: translateY(10px) scale(.7); opacity: .85; } to { transform: translateY(-26px) scale(1.3); opacity: 0; } }
+.st-map .st-flow { animation: st-flowk 1.6s linear infinite; } @keyframes st-flowk { to { stroke-dashoffset: -28; } }
+@media (prefers-reduced-motion: reduce) { .st-map .st-bob, .st-map .st-flap, .st-map .st-wing, .st-map .st-twinkle, .st-map .st-rise, .st-map .st-spout, .st-map .st-float, .st-map .st-drift, .st-map .st-glow, .st-map .st-smoke, .st-map .st-flow { animation: none; } }
