@@ -30,6 +30,17 @@ collector export. **Listen to the files `--sample` prints before trusting the la
 what it said. This is a few synthetic adult voices, so test it on real recordings (step 3, transfer mode), never on itself.
 For Hindi/other-script targets pass `--extra file.csv` (columns `syllable,lang,tld,text`).
 
+## 1c. Hindi barakhadi (every consonant x 12 vowel forms)
+
+```bash
+python training/make_barakhadi_csv.py > training/barakhadi.csv
+python training/make_tts_dataset.py --out training/tts-hi --consonants --extra training/barakhadi.csv --accents com --augment 3 --sample 12
+```
+
+276 syllable texts, one Google Hindi voice (so held-out-speaker scores are meaningless here; use real recordings as the test).
+Hindi th/dh are the aspirated stops थ/ध, not English θ/ð. d and t use both dental and retroflex letters under one label.
+zh and w are skipped (no Hindi letter). Vowel labels: a aa i ii u uu e ai o au am ah.
+
 ## 2. Features (downloads the PyTorch model from Hugging Face, over 1 GB)
 
 ```bash

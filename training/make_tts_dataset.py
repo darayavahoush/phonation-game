@@ -89,31 +89,32 @@ def text_for(c, v): return c + VOWEL_SPELL[v]
 
 def main(argv=None, synth=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument('--out', default='training/tts-data'); ap.add_argument('--consonants', nargs='+', default=['b', 'p', 'd', 't', 'g', 'k'])
+    ap.add_argument('--out', default='training/tts-data'); ap.add_argument('--consonants', nargs='*', default=['b', 'p', 'd', 't', 'g', 'k'], help='English-spelling consonants; pass none (--consonants) to skip English')
     ap.add_argument('--vowels', nargs='+', default=['a']); ap.add_argument('--accents', nargs='+', default=ACCENTS)
     ap.add_argument('--augment', type=int, default=4, help='extra randomised copies per clip, on top of the clean one')
-    ap.add_argument('--extra', help='CSV with columns syllable,lang,tld,text for hand-written targets (e.g. Hindi script)')
+    ap.add_argument('--extra', help='CSV: syllable,lang,tld,text and optionally consonant,vowel,variant (see make_barakhadi_csv.py)')
     ap.add_argument('--seed', type=int, default=0); ap.add_argument('--sample', type=int, default=0)
     a = ap.parse_args(argv)
     for c in a.consonants:
         if c in SHAKY: print(f'warning: "{c}": {SHAKY[c]}. Check these by ear, or use --extra with a better text.', file=sys.stderr)
     rng = np.random.default_rng(a.seed)
-    jobs = [(c + v, c, v, text_for(c, v), 'en', t) for c in a.consonants for v in a.vowels for t in a.accents]
+    jobs = [(c + v, c, v, text_for(c, v), 'en', t, '') for c in a.consonants for v in a.vowels for t in a.accents] if a.consonants else []
     if a.extra:
         for r in csv.DictReader(open(a.extra, encoding='utf-8')):
             syl = r['syllable']; c, v = (syl[:-1], syl[-1]) if syl[-1] in VOWEL_SPELL else (syl, '')
-            jobs.append((syl, c, v, r['text'], r['lang'], r.get('tld') or 'com'))
+            jobs.append((syl, r.get('consonant') or c, r.get('vowel') or v, r['text'], r['lang'], r.get('tld') or 'com', r.get('variant') or ''))
     os.makedirs(os.path.join(a.out, 'clips'), exist_ok=True); os.makedirs(os.path.join(a.out, 'mp3'), exist_ok=True)
     head = ['file', 'speaker', 'voice', 'syllable', 'consonant', 'vowel', 'take', 'sample_rate', 'speech_start_ms', 'speech_end_ms', 'peak_db', 'created_at', 'tts_text']
     rows, now = [], time.strftime('%Y-%m-%dT%H:%M:%S')
-    for k, (syl, c, v, text, lang, tld) in enumerate(jobs, 1):
+    for k, (syl, c, v, text, lang, tld, variant) in enumerate(jobs, 1):
         spk = f'tts-{lang}-{tld}'.replace('.', '')
-        cache = os.path.join(a.out, 'mp3', f'{spk}_{syl}.mp3')
+        tag = f'{syl}-{variant}' if variant else syl      # same label, different source letter (e.g. dental vs retroflex t)
+        cache = os.path.join(a.out, 'mp3', f'{spk}_{tag}.mp3')
         x = trim_silence(synth(text, lang, tld, cache) if synth else decode_mp3(gtts_mp3(text, lang, tld, cache)))
         for take in range(a.augment + 1):
             y = x if take == 0 else augment(x, rng)
             if take == 0: y = np.concatenate([np.zeros(3200, np.float32), y, np.zeros(3200, np.float32)])
-            rel = f'clips/{spk}_{syl}_{take:02d}.wav'; write_wav(os.path.join(a.out, rel), y)
+            rel = f'clips/{spk}_{tag}_{take:02d}.wav'; write_wav(os.path.join(a.out, rel), y)
             s, e, pk = speech_span(y)
             rows.append([rel, spk, 'tts', syl, c, v, take + 1, 16000, s, e, pk, now, text])
         if k % 10 == 0 or k == len(jobs): print(f'  {k}/{len(jobs)} voices x syllables', flush=True)
