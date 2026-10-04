@@ -61,10 +61,15 @@ export function ctcGreedy(post, vocab) {
  * such variants of one sound; they must all count as the SAME phone, not as competitors.
  */
 export function basePhone(label) {
+  return baseKeepDot(label).replace(/\./g, '');
+}
+
+/** Like basePhone but keeps the espeak retroflex dot (s. = ʂ), which some units list explicitly. */
+export function baseKeepDot(label) {
   return String(label)
     .normalize('NFD')
     .replace(/[\u0300-\u036f\u02e5-\u02e9]/g, '') // combining marks, tone letters
-    .replace(/[0-9ːˑʰʲʷʼˈˌ.]/g, '');
+    .replace(/[0-9ːˑʰʲʷʼˈˌ]/g, '');
 }
 
 /**
@@ -74,11 +79,11 @@ export function basePhone(label) {
 const PHONES = Object.freeze({
   // stops, affricates
   b: ['b'], p: ['p'], d: ['d'], t: ['t'], k: ['k'], c: ['k'], q: ['k'], g: ['ɡ', 'g'],
-  ch: ['tʃ', 'ʧ'], j: ['dʒ', 'ʤ'],
+  ch: ['tʃ', 'ʧ', 'tɕ', 'ʨ'], j: ['dʒ', 'ʤ', 'dʑ', 'ʥ'],
   // nasals
   m: ['m'], n: ['n'], ng: ['ŋ'],
   // fricatives
-  f: ['f'], v: ['v'], s: ['s'], z: ['z'], sh: ['ʃ'], zh: ['ʒ'], th: ['θ'], dh: ['ð'], h: ['h'],
+  f: ['f'], v: ['v'], s: ['s'], z: ['z'], sh: ['ʃ', 'ɕ', 'ʂ', 's.'], zh: ['ʒ', 'ʑ', 'ʐ', 'z.'], th: ['θ'], dh: ['ð'], h: ['h'],
   // liquids and glides
   l: ['l', 'ɫ'], r: ['ɹ', 'r', 'ɾ', 'ɻ'], y: ['j'], w: ['w'],
   // vowels
@@ -107,10 +112,20 @@ export function syllableUnits(syllable) {
   return out;
 }
 
+// Labels listed WITH a dot (s. z.) belong only to the unit that lists them; any other dotted
+// label (t. = retroflex t, common in Indian English) falls back to its plain base phone.
+const DOTTED = new Set(Object.values(PHONES).flat().filter((l) => l.includes('.')));
+
+function matchesUnit(label, unit) {
+  const fam = PHONES[unit] || [];
+  const kd = baseKeepDot(label);
+  if (DOTTED.has(kd)) return fam.includes(kd);
+  return fam.includes(kd.replace(/\./g, ''));
+}
+
 function idsFor(unit, vocab) {
-  const fam = new Set(PHONES[unit] || []);
   const ids = [];
-  vocab.forEach((l, i) => { if (l != null && !isSpecial(l) && fam.has(basePhone(l))) ids.push(i); });
+  vocab.forEach((l, i) => { if (l != null && !isSpecial(l) && matchesUnit(l, unit)) ids.push(i); });
   return ids;
 }
 

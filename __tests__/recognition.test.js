@@ -383,3 +383,15 @@ test('final consonant is scored too', () => {
   assert.equal(s.coda.verdict, 'target_dominant');
   assert.equal(s.consonant, null);
 });
+
+test('Indian-English realisations count: ɕ/ʂ/s. for sh, tɕ for ch, dʑ for j; retroflex t. still counts as t', () => {
+  const V = ['<pad>', 'ʃ', 's.', 'ɕ', 's', 'tʃ', 'tɕ', 'dʑ', 'dʒ', 't', 't.', 'ɑ5'];
+  assert.deepEqual(resolveTargets('sha', V).consonant.labels, ['ʃ', 's.', 'ɕ']);
+  assert.deepEqual(resolveTargets('sa', V).consonant.labels, ['s']);
+  assert.deepEqual(resolveTargets('cha', V).consonant.labels, ['tʃ', 'tɕ']);
+  assert.deepEqual(resolveTargets('ja', V).consonant.labels, ['dʑ', 'dʒ']);
+  assert.deepEqual(resolveTargets('ta', V).consonant.labels, ['t', 't.']);
+  const mk = (idx, pk) => { const r = new Float32Array(V.length); r[idx] = pk; return r; };
+  const s = scorePosteriors([mk(2, 0.9), mk(11, 0.8)], V, 'sha'); // heard s. then ɑ5
+  assert.equal(s.consonant.verdict, 'target_dominant');
+});

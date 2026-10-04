@@ -54,6 +54,7 @@ test('silence and noise give no cue rather than a guess', () => {
   assert.equal(stopVoicingCue(n, SR).ok, false);
 });
 
+const ON = { useCue: true };
 const cons = (over) => ({ target: 'p', twin: 'b', place: 'ok', voicing: 'unsure', verdict: 'ambiguous', llr: 0.1, bestCompetitor: 'b', ...over });
 
 test('p vs b: b heard is WRONG, not accepted as the same sound', () => {
@@ -62,19 +63,25 @@ test('p vs b: b heard is WRONG, not accepted as the same sound', () => {
 });
 
 test('unsure model + clear voiceless cue rescues p; clear voiced cue condemns it', () => {
-  assert.deepEqual(decideConsonant(cons(), { ok: true, call: 'voiceless' }, 'p'), { final: 'correct', decidedBy: 'acoustic' });
-  assert.deepEqual(decideConsonant(cons(), { ok: true, call: 'voiced' }, 'p'), { final: 'wrong', decidedBy: 'acoustic' });
-  assert.equal(decideConsonant(cons(), { ok: true, call: 'unclear' }, 'p').final, 'unsure');
-  assert.equal(decideConsonant(cons(), { ok: false }, 'p').final, 'unsure');
+  assert.deepEqual(decideConsonant(cons(), { ok: true, call: 'voiceless' }, 'p', ON), { final: 'correct', decidedBy: 'acoustic' });
+  assert.deepEqual(decideConsonant(cons(), { ok: true, call: 'voiced' }, 'p', ON), { final: 'wrong', decidedBy: 'acoustic' });
+  assert.equal(decideConsonant(cons(), { ok: true, call: 'unclear' }, 'p', ON).final, 'unsure');
+  assert.equal(decideConsonant(cons(), { ok: false }, 'p', ON).final, 'unsure');
 });
 
 test('model and audio disagreeing is reported unsure, not forced either way', () => {
   const win = cons({ verdict: 'target_dominant', voicing: 'target', llr: 0.9 });
-  assert.equal(decideConsonant(win, { ok: true, call: 'voiced' }, 'p').final, 'unsure');
-  assert.equal(decideConsonant({ ...win, llr: 3 }, { ok: true, call: 'voiced' }, 'p').final, 'correct');
+  assert.equal(decideConsonant(win, { ok: true, call: 'voiced' }, 'p', ON).final, 'unsure');
+  assert.equal(decideConsonant({ ...win, llr: 3 }, { ok: true, call: 'voiced' }, 'p', ON).final, 'correct');
 });
 
 test('the cue is never used for non-stops', () => {
   const m = { target: 'm', verdict: 'ambiguous', llr: 0.2, place: undefined };
   assert.equal(decideConsonant(m, { ok: true, call: 'voiceless' }, 'm').final, 'unsure');
+});
+
+test('cue is off by default: a clear model result is not changed by it', () => {
+  const win = cons({ verdict: 'target_dominant', voicing: 'target', llr: 1.2 });
+  assert.equal(decideConsonant(win, { ok: true, call: 'voiced' }, 'p').final, 'correct');
+  assert.equal(decideConsonant(cons(), { ok: true, call: 'voiceless' }, 'p').final, 'unsure');
 });

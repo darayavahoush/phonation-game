@@ -57,7 +57,7 @@ export class MockRecognizer {
  * acoustic metrics.
  */
 export class TransformersPhonemeRecognizer {
-  constructor({ transformers, modelId, vocab = null, dtype = 'q8', device = null, preprocess = null, minSec = 0.15, onProgress = null } = {}) {
+  constructor({ transformers, modelId, vocab = null, dtype = 'q8', device = null, preprocess = null, minSec = 0.15, onProgress = null, useAcousticCue = false } = {}) {
     if (!transformers || !transformers.AutoModelForCTC || !transformers.AutoProcessor) {
       throw new Error('Pass the @huggingface/transformers module as `transformers`');
     }
@@ -69,6 +69,7 @@ export class TransformersPhonemeRecognizer {
     this.device = device;
     this.preprocess = preprocess;
     this.minSec = minSec;
+    this.useAcousticCue = useAcousticCue; // experimental stop-voicing tie-break; off until calibrated
     this.onProgress = onProgress; // optional: (p) => void, Transformers.js download progress events
     this.name = 'transformers.js-ctc';
     this._ready = null;
@@ -126,7 +127,7 @@ export class TransformersPhonemeRecognizer {
     if (syllableLevel && score.ok && score.consonant) {
       const cue = stopVoicingCue(raw16k, MODEL_SAMPLE_RATE);
       score.voicingCue = cue;
-      Object.assign(score.consonant, decideConsonant(score.consonant, cue, score.consonant.target));
+      Object.assign(score.consonant, decideConsonant(score.consonant, cue, score.consonant.target, { useCue: this.useAcousticCue }));
     }
     return { ...base, ...score, audioSec: Math.round(audioSec * 100) / 100 };
   }

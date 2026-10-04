@@ -115,13 +115,15 @@ export function stopVoicingCue(x, sr = 16000) {
 }
 
 /**
- * Final call on the starting consonant. The model decides when it is clear. When it is torn between
+ * Final call on the starting consonant. The acoustic cue is OFF by default (useCue: false): on the
+ * first real recordings it said "voiced" for p, t and k alike, so it made results worse. The model decides when it is clear. When it is torn between
  * a stop and its voicing twin, a clear acoustic cue breaks the tie. Never both a model win and a
  * cue loss with confidence: that is reported as 'unsure'.
  * @returns {{final: 'correct'|'wrong'|'unsure', decidedBy: 'model'|'acoustic'|'none'}}
  */
-export function decideConsonant(consonant, cue, targetUnit) {
+export function decideConsonant(consonant, cue, targetUnit, { useCue = false } = {}) {
   if (!consonant) return null;
+  if (!useCue) cue = null; // the cue is logged but does not decide anything unless enabled
   const v = consonant.verdict;
   const targetVoiced = VOICED_STOPS.has(targetUnit);
   const twinBestRival = consonant.twin && consonant.bestCompetitor

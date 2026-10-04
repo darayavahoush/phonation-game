@@ -23,6 +23,23 @@ const makeMock = () => new MockRecognizer((audio, sr, { level }) => ({
   vowel: { target: level.syllable[1], targetPeak: 0.9, bestCompetitor: null, competitorPeak: 0, llr: 3, verdict: 'target_dominant' },
 }), 'mock (not a real model)')
 
+// Keeps the latest clip in memory so YOU can download it as a .wav for debugging. Nothing is uploaded.
+const withCapture = (inner, store) => ({
+  name: inner.name,
+  ready: () => inner.ready(),
+  recognize: async (audio, sr, ctx) => { store.current = { audio: new Float32Array(audio), sr }; return inner.recognize(audio, sr, ctx) },
+})
+
+function wavBlob(audio, sr) {
+  const n = audio.length, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf)
+  const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)) }
+  w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true)
+  v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true)
+  w(36, 'data'); v.setUint32(40, n * 2, true)
+  for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, audio[i])) * 32767, true)
+  return new Blob([buf], { type: 'audio/wav' })
+}
+
 function Lab() {
   const rec = useRef(null), eng = useRef(null)
   const [model, setModel] = useState({ state: 'idle', msg: '' })
@@ -34,10 +51,12 @@ function Lab() {
   const [rows, setRows] = useState([])
   const [err, setErr] = useState('')
   const files = useRef({})
+  const lastClip = useRef(null)
+  const clips = useRef(new Map())
 
   async function loadModel() {
     setErr('')
-    if (mock) { rec.current = makeMock(); setModel({ state: 'ready', msg: 'mock recognizer' }); return }
+    if (mock) { rec.current = withCapture(makeMock(), lastClip); setModel({ state: 'ready', msg: 'mock recognizer' }); return }
     const t0 = Date.now()
     try {
       setModel({ state: 'loading', msg: 'starting…' })
@@ -53,6 +72,7 @@ function Lab() {
           if (p.status === 'progress' && p.file) { files.current[p.file] = p; const f = Object.values(files.current); const loaded = f.reduce((a, x) => a + (x.loaded || 0), 0), total = f.reduce((a, x) => a + (x.total || 0), 0); setModel({ state: 'loading', msg: `downloading ${(loaded / 1e6).toFixed(0)} / ${(total / 1e6).toFixed(0)} MB` }) }
         },
       })
+      rec.current = withCapture(rec.current, lastClip)
       await rec.current.ready()
       setModel({ state: 'ready', msg: `loaded in ${((Date.now() - t0) / 1000).toFixed(1)} s` })
     } catch (e) { rec.current = null; setModel({ state: 'idle', msg: '' }); setErr(`Model failed to load: ${e.message}`) }
@@ -81,8 +101,10 @@ function Lab() {
     try {
       const r = await eng.current.endTrialAndRecognize(rec.current)
       const x = r.recognition || {}
+      const rowN = rows.length + 1
+      if (lastClip.current) { clips.current.set(rowN, lastClip.current); lastClip.current = null }
       setRows((rs) => [{
-        n: rs.length + 1, target: syl, heard: x.heard ?? (x.reason || x.error || '—'), cons: x.consonant?.verdict ?? '', final: x.consonant?.final ?? '', by: x.consonant?.decidedBy ?? '', vot: x.voicingCue?.ok ? x.voicingCue.votMs : '', pre: x.voicingCue?.ok ? x.voicingCue.prevoicedMs : '', cue: x.voicingCue?.ok ? x.voicingCue.call : (x.voicingCue?.reason ?? ''), place: x.consonant?.place ?? '', voicing: x.consonant?.voicing ?? '', llrV: x.consonant?.voicingLlr ?? '', vowel: x.vowel?.verdict ?? '',
+        n: rowN, target: syl, heard: x.heard ?? (x.reason || x.error || '—'), cons: x.consonant?.verdict ?? '', final: x.consonant?.final ?? '', by: x.consonant?.decidedBy ?? '', vot: x.voicingCue?.ok ? x.voicingCue.votMs : '', pre: x.voicingCue?.ok ? x.voicingCue.prevoicedMs : '', cue: x.voicingCue?.ok ? x.voicingCue.call : (x.voicingCue?.reason ?? ''), place: x.consonant?.place ?? '', voicing: x.consonant?.voicing ?? '', llrV: x.consonant?.voicingLlr ?? '', vowel: x.vowel?.verdict ?? '',
         llrC: x.consonant?.llr ?? '', comp: x.consonant?.bestCompetitor ?? '', count: r.metrics?.syllableCount ?? '', reliable: r.quality?.reliable, flags: (r.quality?.flags || []).join(' '), ok: x.ok !== false,
       }, ...rs])
     } catch (e) { setErr(e.message) }
@@ -131,10 +153,10 @@ function Lab() {
       {err && <p role="alert" style={{ color: '#b00' }}>{err}</p>}
 
       {rows.length > 0 && <section>
-        <p><b>{hit} of {done.length}</b> attempts were CORRECT on the starting consonant (b and p are different sounds; an unclear one counts as not correct). <button onClick={csv}>Download CSV</button> <button onClick={() => setRows([])}>Clear</button></p>
+        <p><b>{hit} of {done.length}</b> attempts were CORRECT on the starting consonant (b and p are different sounds; an unclear one counts as not correct). <button onClick={csv}>Download CSV</button> <button onClick={() => { setRows([]); clips.current.clear() }}>Clear</button></p>
         <div style={{ overflowX: 'auto' }}><table style={{ borderCollapse: 'collapse', width: '100%' }}>
-          <thead><tr>{['#', 'meant', 'model heard', 'consonant', 'voicing (model)', 'vot / pre-voicing ms', 'vowel', 'other sound', 'dots', 'mic'].map((h) => <th key={h} style={{ textAlign: 'left', borderBottom: '2px solid #ccc', padding: 4 }}>{h}</th>)}</tr></thead>
-          <tbody>{rows.map((r) => <tr key={r.n}>{[r.n, r.target, r.heard, (r.final ? FINAL[r.final] + (r.by === 'acoustic' ? ' (by audio cue)' : '') : VERDICT[r.cons]) || r.cons, VOICE[r.voicing] || '', r.vot === '' ? (r.cue || '') : `${r.vot} / ${r.pre} (${r.cue})`, VERDICT[r.vowel] || r.vowel, r.comp, r.count, r.reliable === false ? '⚠ ' + r.flags : 'ok'].map((c, i) => <td key={i} style={{ borderBottom: '1px solid #eee', padding: 4 }}>{String(c)}</td>)}</tr>)}</tbody>
+          <thead><tr>{['#', 'meant', 'model heard', 'consonant', 'voicing (model)', 'vot / pre-voicing ms', 'vowel', 'other sound', 'dots', 'mic', 'clip'].map((h) => <th key={h} style={{ textAlign: 'left', borderBottom: '2px solid #ccc', padding: 4 }}>{h}</th>)}</tr></thead>
+          <tbody>{rows.map((r) => <tr key={r.n}>{[r.n, r.target, r.heard, (r.final ? FINAL[r.final] + (r.by === 'acoustic' ? ' (by audio cue)' : '') : VERDICT[r.cons]) || r.cons, VOICE[r.voicing] || '', r.vot === '' ? (r.cue || '') : `${r.vot} / ${r.pre} (${r.cue})`, VERDICT[r.vowel] || r.vowel, r.comp, r.count, r.reliable === false ? '⚠ ' + r.flags : 'ok', clips.current.has(r.n) ? <button onClick={() => { const c = clips.current.get(r.n); const a = document.createElement('a'); a.href = URL.createObjectURL(wavBlob(c.audio, c.sr)); a.download = `lab-${r.n}-${r.target}.wav`; a.click() }}>save .wav</button> : ''].map((c, i) => <td key={i} style={{ borderBottom: '1px solid #eee', padding: 4 }}>{typeof c === 'object' ? c : String(c)}</td>)}</tr>)}</tbody>
         </table></div>
         <small>“model heard” is the raw phone string; “consonant / vowel” compare the model’s confidence in what you meant against its best rival. Not validated on children or on disordered speech, so treat a ❌ as a clue, not a mistake by the child.</small>
       </section>}
