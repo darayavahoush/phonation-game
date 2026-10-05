@@ -41,6 +41,22 @@ python training/make_tts_dataset.py --out training/tts-hi --consonants --extra t
 Hindi th/dh are the aspirated stops थ/ध, not English θ/ð. d and t use both dental and retroflex letters under one label.
 zh and w are skipped (no Hindi letter). Vowel labels: a aa i ii u uu e ai o au am ah.
 
+## 1e. A second speech engine and a combined model (no real speakers needed)
+
+```bash
+python training/make_say_dataset.py --list                                    # macOS voices on this Mac (Indian ones first)
+python training/make_say_dataset.py --out training/say-en --consonants b p d t g k --vowels a --per-lang 4
+python training/features.py training/say-en --out training/feats_say.npz
+python training/merge_classes.py training/feats_say.npz training/feats_say_plain.npz --aspirates
+python training/ensemble.py --train training/feats_big_plain.npz --test training/feats_say_plain.npz
+python training/ensemble.py training/feats_big_plain.npz                      # held-out-voice score, single heads vs combined
+```
+
+`make_say_dataset.py` uses Apple's `say` voices, a different synthesiser from Google's, as a harder synthetic test than holding out
+another Google voice. `ensemble.py` averages heads trained on several hidden layers plus the browser-sized features and also reports
+top-3 and a pairwise score (how often the true sound outranks a given wrong one), which is closer to what a game that already knows
+its target needs. Both are still synthetic; real recordings remain the only final test.
+
 ## 2. Features (downloads the PyTorch model from Hugging Face, over 1 GB)
 
 ```bash
