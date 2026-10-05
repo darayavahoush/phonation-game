@@ -70,6 +70,21 @@ def candidate_acc(Pc, cons, cc, cand):
     return float((np.array(present)[sub.argmax(1)] == cons[m]).mean())
 
 
+def print_confusion(Pc, cons, cc, cand):
+    """Rows: true sound among `cand`. Columns: what the model said (its overall top choice), `other` = outside `cand`."""
+    present = [c for c in cand if c in cc]
+    pred = np.array(cc)[Pc.argmax(1)]
+    print(f'\nconfusion (rows = true, columns = model\'s top answer; counts):')
+    print(f'{"":<6}' + ''.join(f'{c:>6}' for c in present) + f'{"other":>7}   most common "other" answers')
+    for t in present:
+        m = cons == t
+        row = [int((pred[m] == c).sum()) for c in present]
+        out = [x for x in pred[m] if x not in present]
+        from collections import Counter
+        top = ', '.join(f'{k} {v}' for k, v in Counter(out).most_common(3))
+        print(f'{t:<6}' + ''.join(f'{n:>6}' for n in row) + f'{len(out):>7}   {top}')
+
+
 def report(name, Pc, Pv, cons, vow, cc, vc, cand=None):
     ok_c, ok_v = top1(Pc, cons, cc), top1(Pv, vow, vc)
     line = f'{name:<28}{ok_c.mean():>10.1%}{ok_v.mean():>8.1%}{(ok_c & ok_v).mean():>10.1%}'
@@ -89,6 +104,7 @@ def main():
     ap.add_argument('--train'); ap.add_argument('--test')
     ap.add_argument('--sets', nargs='+', default=DEFAULT_SETS)
     ap.add_argument('--C', type=float, default=0.1)
+    ap.add_argument('--confusion', action='store_true', help='with --candidates: print where each candidate sound went')
     ap.add_argument('--candidates', nargs='*', default=[], help='consonants a level could confuse, e.g. b p d t g k; adds an accuracy-among-these column')
     a = ap.parse_args()
     cand = a.candidates or None
@@ -112,6 +128,7 @@ def main():
             Pc = proba(ftr[name], ctr, fte[name][keep], cc, a.C); Pv = proba(ftr[name], vtr, fte[name][keep], vc, a.C)
             Pcs.append(Pc); Pvs.append(Pv); report(name, Pc, Pv, cons, vow, cc, vc, cand)
         report('ENSEMBLE (average)', np.mean(Pcs, 0), np.mean(Pvs, 0), cons, vow, cc, vc, cand)
+        if a.confusion and cand: print_confusion(np.mean(Pcs, 0), cons, cc, cand)
         return
 
     if not a.feats: ap.error('give a features file, or --train and --test')
@@ -128,6 +145,7 @@ def main():
         Pc, Pv = oof(sets[name], cons, folds, cc, a.C), oof(sets[name], vow, folds, vc, a.C)
         Pcs.append(Pc); Pvs.append(Pv); report(name, Pc, Pv, cons, vow, cc, vc, cand)
     report('ENSEMBLE (average)', np.mean(Pcs, 0), np.mean(Pvs, 0), cons, vow, cc, vc, cand)
+    if a.confusion and cand: print_confusion(np.mean(Pcs, 0), cons, cc, cand)
 
 
 if __name__ == '__main__':
