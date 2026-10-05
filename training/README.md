@@ -57,6 +57,19 @@ another Google voice. `ensemble.py` averages heads trained on several hidden lay
 top-3 and a pairwise score (how often the true sound outranks a given wrong one), which is closer to what a game that already knows
 its target needs. Both are still synthetic; real recordings remain the only final test.
 
+### A third engine for training: Edge neural voices
+
+```bash
+pip install edge-tts
+python training/make_edge_dataset.py --list --lang hi                       # voices per language
+python training/make_edge_dataset.py --out training/edge-en --consonants b p d t g k --vowels a e i o u --per-lang 4
+python training/make_edge_dataset.py --out training/edge-in --consonants --extra training/india.csv --per-lang 2
+```
+
+Several Indian-locale voices per language (female and male), so training sees more voices than gTTS gave. Add these to the training
+features (`features.py` on each folder, then `combine_npz.py`) and keep the `say` set as the held-out test. Adding seven English
+accents of b/p/d/t/g/k to training raised held-out `say` accuracy among those six from 42% to 56%, so voice coverage matters.
+
 ## 2. Features (downloads the PyTorch model from Hugging Face, over 1 GB)
 
 ```bash
