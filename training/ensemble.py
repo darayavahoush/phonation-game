@@ -9,6 +9,7 @@ Each feature set gets its own logistic head (same settings as train.py); the ens
 Reports, per set and for the ensemble:
   consonant / vowel / syllable top-1     (same as train.py)
   consonant top-3                        (the right answer is among the three most likely)
+  --candidates b p d t g k               accuracy among only those sounds (what a level that can only confuse them really needs)
   consonant pairwise                     (how often the true class scores higher than a given wrong class; 50% = coin flip).
                                          This is the number that matters for a game that already knows the target syllable.
 Evaluation is the same as train.py: one voice group held out at a time. Not a substitute for real recordings.
@@ -60,15 +61,26 @@ def pairwise(P, y, classes):
     return float((beats / (P.shape[1] - 1)).mean())
 
 
-def report(name, Pc, Pv, cons, vow, cc, vc, extra=True):
+def candidate_acc(Pc, cons, cc, cand):
+    """Top-1 among only the sounds a level could confuse: renormalise over `cand` and score clips whose true sound is one of them."""
+    present = [c for c in cand if c in cc]
+    if len(present) < 2: return float('nan')
+    m = np.isin(cons, present)
+    sub = Pc[m][:, [cc.index(c) for c in present]]
+    return float((np.array(present)[sub.argmax(1)] == cons[m]).mean())
+
+
+def report(name, Pc, Pv, cons, vow, cc, vc, cand=None):
     ok_c, ok_v = top1(Pc, cons, cc), top1(Pv, vow, vc)
     line = f'{name:<28}{ok_c.mean():>10.1%}{ok_v.mean():>8.1%}{(ok_c & ok_v).mean():>10.1%}'
-    if extra:
-        line += f'{topk(Pc, cons, cc).mean():>10.1%}{pairwise(Pc, cons, cc):>11.1%}'
+    line += f'{topk(Pc, cons, cc).mean():>10.1%}{pairwise(Pc, cons, cc):>11.1%}'
+    if cand: line += f'{candidate_acc(Pc, cons, cc, cand):>11.1%}'
     print(line)
 
 
-HEADER = f'{"features":<28}{"consonant":>10}{"vowel":>8}{"syllable":>10}{"cons top3":>10}{"cons pair":>11}'
+def header(cand):
+    h = f'{"features":<28}{"consonant":>10}{"vowel":>8}{"syllable":>10}{"cons top3":>10}{"cons pair":>11}'
+    return h + (f'{"among " + str(len(cand)):>11}' if cand else '')
 
 
 def main():
@@ -77,7 +89,9 @@ def main():
     ap.add_argument('--train'); ap.add_argument('--test')
     ap.add_argument('--sets', nargs='+', default=DEFAULT_SETS)
     ap.add_argument('--C', type=float, default=0.1)
+    ap.add_argument('--candidates', nargs='*', default=[], help='consonants a level could confuse, e.g. b p d t g k; adds an accuracy-among-these column')
     a = ap.parse_args()
+    cand = a.candidates or None
 
     if a.train and a.test:
         tr, te = np.load(a.train, allow_pickle=True), np.load(a.test, allow_pickle=True)
@@ -92,12 +106,12 @@ def main():
         # test clips of classes the model can't know would crash the lookups below, so drop them from scoring
         keep = np.array([c in set(cc) and v in set(vc) for c, v in zip(cons, vow)])
         cons, vow = cons[keep], vow[keep]
-        print(f'train {len(ctr)} clips, test {int(keep.sum())} clips\n{HEADER}')
+        print(f'train {len(ctr)} clips, test {int(keep.sum())} clips\n{header(cand)}')
         Pcs, Pvs = [], []
         for name in a.sets:
             Pc = proba(ftr[name], ctr, fte[name][keep], cc, a.C); Pv = proba(ftr[name], vtr, fte[name][keep], vc, a.C)
-            Pcs.append(Pc); Pvs.append(Pv); report(name, Pc, Pv, cons, vow, cc, vc)
-        report('ENSEMBLE (average)', np.mean(Pcs, 0), np.mean(Pvs, 0), cons, vow, cc, vc)
+            Pcs.append(Pc); Pvs.append(Pv); report(name, Pc, Pv, cons, vow, cc, vc, cand)
+        report('ENSEMBLE (average)', np.mean(Pcs, 0), np.mean(Pvs, 0), cons, vow, cc, vc, cand)
         return
 
     if not a.feats: ap.error('give a features file, or --train and --test')
@@ -108,12 +122,12 @@ def main():
     sets = train.feature_sets(d)
     missing = [s for s in a.sets if s not in sets]
     if missing: sys.exit(f'unknown feature sets {missing}; available: {list(sets)}')
-    print(f'{len(cons)} clips, {len(set(spk))} voice groups, {mode}\n{HEADER}')
+    print(f'{len(cons)} clips, {len(set(spk))} voice groups, {mode}\n{header(cand)}')
     Pcs, Pvs = [], []
     for name in a.sets:
         Pc, Pv = oof(sets[name], cons, folds, cc, a.C), oof(sets[name], vow, folds, vc, a.C)
-        Pcs.append(Pc); Pvs.append(Pv); report(name, Pc, Pv, cons, vow, cc, vc)
-    report('ENSEMBLE (average)', np.mean(Pcs, 0), np.mean(Pvs, 0), cons, vow, cc, vc)
+        Pcs.append(Pc); Pvs.append(Pv); report(name, Pc, Pv, cons, vow, cc, vc, cand)
+    report('ENSEMBLE (average)', np.mean(Pcs, 0), np.mean(Pvs, 0), cons, vow, cc, vc, cand)
 
 
 if __name__ == '__main__':
