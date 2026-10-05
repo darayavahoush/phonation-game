@@ -68,6 +68,35 @@ python3 training/train.py --train training/feats_tts.npz --test training/feats_r
 
 `python3 training/selftest.py` checks the training code on synthetic features (it says nothing about real speech).
 
+## 1d. Indian-language syllables (Hindi, Malayalam, Tamil, Telugu, Kannada, Gujarati, Marathi, Bengali, Punjabi)
+
+```bash
+python training/make_india_csv.py --langs hi,ml,ta --vowels a,i,ii,u,uu,e,ee,o,oo > training/india.csv
+python training/make_tts_dataset.py --out training/tts-india --consonants --extra training/india.csv --accents com --augment 2 --sample 24
+python training/make_india_csv.py --langs te,kn,gu,mr,bn,pa --vowels a,i,ii,u,uu,e,ee,o,oo --no-english > training/india2.csv
+python training/make_tts_dataset.py --out training/tts-india2 --consonants --extra training/india2.csv --accents com --augment 2 --sample 24
+python training/childify.py training/tts-india training/tts-india-child      # pitch/formant-shifted copies
+```
+
+Google asks for about one request per second, so the big sets take 15-25 minutes; the mp3 cache makes a re-run resume where it stopped.
+
+Then build one game-sized feature file and train on it:
+
+```bash
+python training/features.py training/tts-india --out training/feats_tts_india.npz     # repeat for tts-india2, tts-india-child
+python training/combine_npz.py training/feats_big.npz training/feats_tts_india.npz training/feats_tts_india2.npz training/feats_tts_india_child.npz
+python training/relabel_npz.py training/feats_big.npz training/feats_big_fixed.npz     # split syllable labels into consonant + vowel
+python training/merge_classes.py training/feats_big_fixed.npz training/feats_big_game.npz   # tt->t, dd->d, ss->sh, ii->i ...
+python training/train.py training/feats_big_game.npz
+python training/confusions.py training/feats_big_game.npz --layer 8 --classes th dh z f   # what is going wrong, and is it fair
+```
+
+The generated `.npz` files, clips and logs are git-ignored; only the scripts and CSVs are committed.
+
+Caveats when reading the scores:
+- The held-out "speaker" here is one TTS voice (a language or accent), so the number mixes new-voice and new-language transfer. A class that exists in only one voice (z and f) scores 0% by construction; `confusions.py` reports the score with those left out.
+- In the Indic sets `th`/`dh` are the aspirated dental stops (थ ध), not English θ/ð, and merging retroflex into dental (`tth`->`th`) widens them further. Decide which sound the game means before reading much into those two rows.
+
 ## Not done yet
 
 - `features.py` has not been run against the real model (no access from where it was written). Expect to fix small things on first run.
