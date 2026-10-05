@@ -87,6 +87,7 @@ python training/features.py training/tts-india --out training/feats_tts_india.np
 python training/combine_npz.py training/feats_big.npz training/feats_tts_india.npz training/feats_tts_india2.npz training/feats_tts_india_child.npz
 python training/relabel_npz.py training/feats_big.npz training/feats_big_fixed.npz     # split syllable labels into consonant + vowel
 python training/merge_classes.py training/feats_big_fixed.npz training/feats_big_game.npz   # tt->t, dd->d, ss->sh, ii->i ...
+python training/merge_classes.py training/feats_big_fixed.npz training/feats_big_plain.npz --aspirates --drop-single-group   # also kh->k, dh->d ...; drop classes with one voice
 python training/train.py training/feats_big_game.npz
 python training/confusions.py training/feats_big_game.npz --layer 8 --classes th dh z f   # what is going wrong, and is it fair
 ```
@@ -96,6 +97,7 @@ The generated `.npz` files, clips and logs are git-ignored; only the scripts and
 Caveats when reading the scores:
 - The held-out "speaker" here is one TTS voice (a language or accent), so the number mixes new-voice and new-language transfer. A class that exists in only one voice (z and f) scores 0% by construction; `confusions.py` reports the score with those left out.
 - In the Indic sets `th`/`dh` are the aspirated dental stops (थ ध), not English θ/ð, and merging retroflex into dental (`tth`->`th`) widens them further. Decide which sound the game means before reading much into those two rows.
+- TTS voices do not reliably make the aspirate contrast: the held-out Malayalam voice's `th`/`dh` were heard as `t`/`d` 67% / 58% of the time, and Punjabi `th` was heard as `gh` 83% of the time. `--aspirates` folds them into the plain twins for TTS-only training; test the contrast on real recordings before putting it back.
 
 ## Not done yet
 
