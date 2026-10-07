@@ -1,3 +1,4 @@
+import { ServerRecognizer } from '../recognition/serverRecognizer.js'
 // Phoneme lab: an EXPERIMENT page, separate from the game. Records one syllable at a time, runs an on-device
 // phoneme recognizer on it, and shows what the model heard next to what you meant to say.
 // Nothing is uploaded: audio stays in memory for the one recognition call and is dropped. The model itself is
@@ -57,6 +58,7 @@ function Lab() {
   async function loadModel() {
     setErr('')
     if (mock) { rec.current = withCapture(makeMock(), lastClip); setModel({ state: 'ready', msg: 'mock recognizer' }); return }
+    if (new URLSearchParams(location.search).get('server')) { rec.current = withCapture(new ServerRecognizer(), lastClip); setModel({ state: 'loading', msg: 'waking the server…' }); rec.current.ready().then(() => setModel({ state: 'ready', msg: 'server recognizer' })).catch((e) => setModel({ state: 'error', msg: String(e.message || e) })); return }
     const t0 = Date.now()
     try {
       setModel({ state: 'loading', msg: 'starting…' })
