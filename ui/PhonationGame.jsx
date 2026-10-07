@@ -252,7 +252,7 @@ export default function PhonationGame({
           <h1>Voice game</h1>
           <p>
             We use the microphone to see your voice. Your voice is never recorded or saved. Only how loud and how high it is gets measured.
-            {recognizer && ' A sound check runs on this device during each try and is thrown away straight after.'}
+            {recognizer && ' A short recording of each try is sent to our server for a sound check and is not kept.'}
           </p>
           <button className="ph-btn" onClick={begin} disabled={stage === 'starting'}>Start</button>
         </section>
