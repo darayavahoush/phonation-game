@@ -43,7 +43,7 @@ async function defaultRecognizer() {
   return m[k]()
 }
 
-export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS, recognizerFactory = defaultRecognizer, denoiser, onResult }) {
+export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS, recognizerFactory = defaultRecognizer, denoiser, onResult, serverCheck = false }) {
   const [stage, setStage] = useState('welcome') // welcome | calibrating | menu | play | result
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState(null)
@@ -213,7 +213,7 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
               </fieldset>
               <label><input type="checkbox" checked={set.openAll} onChange={(e) => setSet({ ...set, openAll: e.target.checked })} />Open all realms on the map <small>(for grown-ups: skip the fog)</small></label>
               <label><input type="checkbox" checked={set.clinician} onChange={(e) => setSet({ ...set, clinician: e.target.checked })} />Clinician view <small>(display only, not access-controlled)</small></label>
-              <label><input type="checkbox" checked={set.recog} onChange={(e) => setSet({ ...set, recog: e.target.checked })} />On-device sound check <small>(experimental; a short clip is held in memory until the try is scored)</small></label>
+              <label><input type="checkbox" checked={set.recog} onChange={(e) => setSet({ ...set, recog: e.target.checked })} />{serverCheck ? <>Server sound check <small>(experimental; a short recording is sent to our server, scored, and not kept)</small></> : <>On-device sound check <small>(experimental; a short clip is held in memory until the try is scored)</small></>}</label>
               {denoiser && <label className={set.recog ? '' : 'off'}><input type="checkbox" disabled={!set.recog} checked={set.denoise} onChange={(e) => setSet({ ...set, denoise: e.target.checked })} />Reduce room noise for the sound check only <small>(your loudness and pitch results always use the original sound)</small></label>}
             </div>
           </details>
@@ -227,7 +227,7 @@ export default function PhonationStudio({ engineFactory, levels = STARTER_LEVELS
           <div className="st-idle" aria-hidden="true"><Face /><span className="st-hat">{avatar.badge}</span></div>
           <h2>Hi! I’m {avatar.name}.</h2>
           <p>Your voice is magic here. Let’s go on quests and meet dragons, unicorns and more! Find a quiet spot first.</p>
-          <p className="st-fine">Your voice is never recorded or sent anywhere. Only loudness and pitch measurements are used.</p>
+          <p className="st-fine">{set.recog && serverCheck ? "While the sound check is switched on, a short recording of each try is sent to our server to check the sound, and it is not kept. Otherwise your voice is never recorded or sent anywhere." : "Your voice is never recorded or sent anywhere. Only loudness and pitch measurements are used."}</p>
           <button className="st-btn" onClick={begin} disabled={busy}>{busy ? 'Starting…' : 'Begin the adventure'}</button>
         </main>
       )}
