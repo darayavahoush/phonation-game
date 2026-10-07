@@ -20,6 +20,13 @@ function verdictFor(target, ranked) {
   return { verdict: topP >= 0.5 ? 'competitor_dominant' : 'ambiguous', pt, comp };
 }
 
+const DIGRAPHS = ['ch', 'sh', 'ng', 'ny', 'zh'];
+function splitSyllable(s) {
+  if (Array.isArray(s)) return s;
+  const c = DIGRAPHS.find((d) => s.startsWith(d)) || s[0];
+  return [c, s.slice(c.length)];
+}
+
 export class ServerRecognizer {
   constructor({ baseUrl = import.meta.env.VITE_SCORER_URL, timeoutMs = 90000 } = {}) {
     if (!baseUrl) throw new Error('ServerRecognizer: set VITE_SCORER_URL');
@@ -36,7 +43,7 @@ export class ServerRecognizer {
     const base = { kind: 'phoneme', recognizer: this.name, modelId: this.name };
     const audioSec = audio.length / sampleRate;
     if (audioSec < 0.15) return { ...base, ok: false, reason: 'too_short', audioSec };
-    const syl = level && level.syllable;
+    const syl = level && level.syllable ? splitSyllable(level.syllable) : null;
     const fd = new FormData();
     fd.append('file', wavBlobFrom(audio, sampleRate), 'clip.wav');
     if (syl) fd.append('target', syl[0] + syl[1]);
